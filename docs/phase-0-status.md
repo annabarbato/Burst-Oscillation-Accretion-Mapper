@@ -36,7 +36,7 @@ The two probable recovery rows are intentionally not promoted to secure detectio
 
 | Criterion | Status | Notes |
 | --- | --- | --- |
-| A new contributor can explain the scientific question, selection correction, and RXTE-first strategy | Complete | Covered in architecture, roadmap, and agent rules |
+| A new contributor can explain the scientific question, selection correction, and RXTE-first strategy | Complete | Covered in architecture, roadmap, and top-level README |
 | Required external tools and data sources are identified before code | Complete | HEASoft, NICERDAS, CALDB, HEASARC, MINBAR, SIMBAD, RXTE/PCA, NICER/XTI, and Stingray references are tracked |
 | Current mission/catalog claims are timestamped and linked | Complete | Dated source notes and `references.csv` rows exist |
 
