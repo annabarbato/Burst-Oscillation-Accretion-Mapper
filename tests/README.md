@@ -9,6 +9,7 @@ Expected early test areas:
 - SQLite development catalog writes for oscillation candidate rows, scored control rows, non-detections, Leahy diagnostics, and nominal timing significance fields.
 - Targeted control-window search/scoring checks and explicit control-clearance evidence checks for empirical false-alarm review.
 - Deterministic pre/post-burst control intervals and empirical false-alarm summaries on scored controls.
+- Dynamic power-spectrum grid products from sliding targeted-search outputs.
 - No-download archive planning for selected RXTE/PCA raw products.
 - HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.
