@@ -76,6 +76,7 @@ class CandidateCatalogRow:
     expected_frequency_hz: float | None
     frequency_offset_hz: float | None
     z2_power: float | None
+    leahy_power: float | None
     n_harmonics: int | None
     p_single: float | None
     p_trials: float | None
@@ -112,6 +113,7 @@ class ControlCatalogRow:
     expected_frequency_hz: float | None
     frequency_offset_hz: float | None
     z2_power: float | None
+    leahy_power: float | None
     n_harmonics: int | None
     p_single: float | None
     p_trials: float | None
@@ -151,6 +153,7 @@ def candidate_catalog_row_from_review(
         expected_frequency_hz=review.expected_frequency_hz,
         frequency_offset_hz=review.frequency_offset_hz,
         z2_power=review.z2_power,
+        leahy_power=review.leahy_power,
         n_harmonics=review.n_harmonics,
         p_single=p_single,
         p_trials=p_trials,
@@ -198,6 +201,7 @@ def control_catalog_row_from_review(
         expected_frequency_hz=review.expected_frequency_hz,
         frequency_offset_hz=review.frequency_offset_hz,
         z2_power=review.z2_power,
+        leahy_power=review.leahy_power,
         n_harmonics=review.n_harmonics,
         p_single=p_single,
         p_trials=p_trials,
@@ -232,6 +236,7 @@ def initialize_candidate_catalog(connection: sqlite3.Connection) -> None:
             expected_frequency_hz REAL,
             frequency_offset_hz REAL,
             z2_power REAL,
+            leahy_power REAL,
             n_harmonics INTEGER,
             p_single REAL,
             p_trials REAL,
@@ -274,6 +279,7 @@ def initialize_control_catalog(connection: sqlite3.Connection) -> None:
             expected_frequency_hz REAL,
             frequency_offset_hz REAL,
             z2_power REAL,
+            leahy_power REAL,
             n_harmonics INTEGER,
             p_single REAL,
             p_trials REAL,
@@ -315,6 +321,7 @@ def write_candidate_catalog_row(
             expected_frequency_hz,
             frequency_offset_hz,
             z2_power,
+            leahy_power,
             n_harmonics,
             p_single,
             p_trials,
@@ -324,7 +331,7 @@ def write_candidate_catalog_row(
             pipeline_version,
             search_config_id,
             provenance_note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         _row_to_sql_values(row),
     )
@@ -362,6 +369,7 @@ def write_control_catalog_row(
             expected_frequency_hz,
             frequency_offset_hz,
             z2_power,
+            leahy_power,
             n_harmonics,
             p_single,
             p_trials,
@@ -371,7 +379,7 @@ def write_control_catalog_row(
             pipeline_version,
             search_config_id,
             provenance_note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         _control_row_to_sql_values(row),
     )
@@ -443,6 +451,7 @@ def read_candidate_catalog_rows(
             expected_frequency_hz,
             frequency_offset_hz,
             z2_power,
+            leahy_power,
             n_harmonics,
             p_single,
             p_trials,
@@ -489,6 +498,7 @@ def read_control_catalog_rows(
             expected_frequency_hz,
             frequency_offset_hz,
             z2_power,
+            leahy_power,
             n_harmonics,
             p_single,
             p_trials,
@@ -523,6 +533,7 @@ def _row_to_sql_values(row: CandidateCatalogRow) -> tuple[object, ...]:
         row.expected_frequency_hz,
         row.frequency_offset_hz,
         row.z2_power,
+        row.leahy_power,
         row.n_harmonics,
         row.p_single,
         row.p_trials,
@@ -558,6 +569,7 @@ def _control_row_to_sql_values(row: ControlCatalogRow) -> tuple[object, ...]:
         row.expected_frequency_hz,
         row.frequency_offset_hz,
         row.z2_power,
+        row.leahy_power,
         row.n_harmonics,
         row.p_single,
         row.p_trials,
@@ -589,15 +601,16 @@ def _row_from_sql_values(values: sqlite3.Row | tuple[object, ...]) -> CandidateC
         expected_frequency_hz=_optional_float(row[13]),
         frequency_offset_hz=_optional_float(row[14]),
         z2_power=_optional_float(row[15]),
-        n_harmonics=_optional_int(row[16]),
-        p_single=_optional_float(row[17]),
-        p_trials=_optional_float(row[18]),
-        fractional_rms=_optional_float(row[19]),
-        phase_rad=_optional_float(row[20]),
-        reasons=tuple(json.loads(str(row[21]))),
-        pipeline_version=str(row[22]),
-        search_config_id=str(row[23]),
-        provenance_note=str(row[24]),
+        leahy_power=_optional_float(row[16]),
+        n_harmonics=_optional_int(row[17]),
+        p_single=_optional_float(row[18]),
+        p_trials=_optional_float(row[19]),
+        fractional_rms=_optional_float(row[20]),
+        phase_rad=_optional_float(row[21]),
+        reasons=tuple(json.loads(str(row[22]))),
+        pipeline_version=str(row[23]),
+        search_config_id=str(row[24]),
+        provenance_note=str(row[25]),
     )
 
 
@@ -627,15 +640,16 @@ def _control_row_from_sql_values(
         expected_frequency_hz=_optional_float(row[18]),
         frequency_offset_hz=_optional_float(row[19]),
         z2_power=_optional_float(row[20]),
-        n_harmonics=_optional_int(row[21]),
-        p_single=_optional_float(row[22]),
-        p_trials=_optional_float(row[23]),
-        fractional_rms=_optional_float(row[24]),
-        phase_rad=_optional_float(row[25]),
-        reasons=tuple(json.loads(str(row[26]))),
-        pipeline_version=str(row[27]),
-        search_config_id=str(row[28]),
-        provenance_note=str(row[29]),
+        leahy_power=_optional_float(row[21]),
+        n_harmonics=_optional_int(row[22]),
+        p_single=_optional_float(row[23]),
+        p_trials=_optional_float(row[24]),
+        fractional_rms=_optional_float(row[25]),
+        phase_rad=_optional_float(row[26]),
+        reasons=tuple(json.loads(str(row[27]))),
+        pipeline_version=str(row[28]),
+        search_config_id=str(row[29]),
+        provenance_note=str(row[30]),
     )
 
 
@@ -663,6 +677,7 @@ def _validate_review(review: OscillationCandidateReview) -> None:
         ("expected_frequency_hz", review.expected_frequency_hz),
         ("frequency_offset_hz", review.frequency_offset_hz),
         ("z2_power", review.z2_power),
+        ("leahy_power", review.leahy_power),
         ("fractional_rms", review.fractional_rms),
         ("phase_rad", review.phase_rad),
     ):

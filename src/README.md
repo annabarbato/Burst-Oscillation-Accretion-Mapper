@@ -17,7 +17,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.archive_plan`: no-download RXTE raw archive planning from validation manifests.
 - `burst_oscillation_accretion_mapper.burst_detection`: configurable Poisson excess scoring, grouping of adjacent interval candidates, binned morphology review, multi-cadence review clustering, and cluster summary products for later MINBAR/catalog comparison.
 - `burst_oscillation_accretion_mapper.candidate_scoring`: conservative configured scoring of targeted oscillation-search products into secure/probable/marginal/non-detection review summaries.
-- `burst_oscillation_accretion_mapper.catalog_writer`: SQLite development catalog writer for Phase 1 oscillation candidate rows, scored control rows, non-detections, and nominal timing significance fields.
+- `burst_oscillation_accretion_mapper.catalog_writer`: SQLite development catalog writer for Phase 1 oscillation candidate rows, scored control rows, non-detections, Leahy diagnostics, and nominal timing significance fields.
 - `burst_oscillation_accretion_mapper.control_checks`: targeted control-window search/scoring runner plus explicit control-clearance evidence checks for Phase 1 empirical false-alarm review.
 - `burst_oscillation_accretion_mapper.control_intervals`: deterministic pre/post-burst control-window generation and empirical false-alarm summaries for scored controls.
 - `burst_oscillation_accretion_mapper.event_products`: in-memory event product metadata, provenance, GTI-aware slicing, and energy filtering primitives.
@@ -25,7 +25,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
 - `burst_oscillation_accretion_mapper.minbar_matching`: timing-window matching, deterministic detected-window construction, observation-level reports, and recall/review-burden metrics for MINBAR validation targets.
-- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives, first-harmonic phase/amplitude estimates, and sliding-window searches around known source frequencies for Phase 1 validation windows.
+- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window searches around known source frequencies for Phase 1 validation windows.
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
 - `burst_oscillation_accretion_mapper.rxte_config`: RXTE/PCA detector-selection and barycenter provenance configuration.
 - `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks before FITS parsing exists.

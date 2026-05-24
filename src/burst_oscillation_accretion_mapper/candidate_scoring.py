@@ -115,6 +115,7 @@ class OscillationCandidateReview:
     fractional_rms: float | None
     phase_rad: float | None
     reasons: tuple[str, ...]
+    leahy_power: float | None = None
 
     @property
     def is_detection_like(self) -> bool:
@@ -175,6 +176,7 @@ def score_sliding_targeted_z2_result(
             fractional_rms=None,
             phase_rad=None,
             reasons=("no_searched_windows",),
+            leahy_power=None,
         )
 
     best_result = result.best_result
@@ -226,6 +228,7 @@ def _score_best_power(
         fractional_rms=best_power.first_harmonic_fractional_rms,
         phase_rad=best_power.first_harmonic_phase_rad,
         reasons=reasons,
+        leahy_power=best_power.leahy_power,
     )
 
 

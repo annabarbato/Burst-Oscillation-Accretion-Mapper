@@ -11,6 +11,7 @@ from burst_oscillation_accretion_mapper.oscillation_search import (
     TargetedZ2SearchConfig,
     first_harmonic_fractional_rms,
     first_harmonic_phase,
+    leahy_normalized_power,
     make_sliding_windows,
     search_event_product_sliding_targeted_z2,
     search_event_product_targeted_z2,
@@ -33,6 +34,14 @@ def test_z_n_squared_includes_requested_harmonics() -> None:
     power = z_n_squared(times, frequency_hz=10.0, n_harmonics=2)
 
     assert power == pytest.approx(40.0)
+
+
+def test_leahy_normalized_power_matches_first_harmonic_z2() -> None:
+    times = tuple(index * 0.1 for index in range(10))
+
+    power = leahy_normalized_power(times, frequency_hz=10.0)
+
+    assert power == pytest.approx(20.0)
 
 
 def test_first_harmonic_phase_and_fractional_rms_track_rayleigh_vector() -> None:
@@ -117,6 +126,7 @@ def test_search_event_product_targeted_z2_finds_best_frequency() -> None:
     )
     assert result.best_frequency_hz == 10.0
     assert result.best_z2_power == pytest.approx(20.0)
+    assert result.best_power.leahy_power == pytest.approx(20.0)
     assert result.best_phase_rad == pytest.approx(0.0, abs=1e-12)
     assert result.best_fractional_rms == pytest.approx(math.sqrt(2.0))
     assert result.best_power.first_harmonic_phase_rad == pytest.approx(0.0, abs=1e-12)
@@ -262,6 +272,7 @@ def test_search_event_product_sliding_targeted_z2_reports_best_window() -> None:
     assert result.best_result.window == TimeInterval(0.0, 1.0)
     assert result.best_frequency_hz == 10.0
     assert result.best_z2_power == pytest.approx(20.0)
+    assert result.best_result.best_power.leahy_power == pytest.approx(20.0)
     assert result.best_phase_rad == pytest.approx(0.0, abs=1e-12)
     assert result.best_fractional_rms == pytest.approx(math.sqrt(2.0))
 

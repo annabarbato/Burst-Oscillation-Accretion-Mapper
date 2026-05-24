@@ -63,6 +63,7 @@ def test_candidate_catalog_row_from_review_preserves_required_fields() -> None:
     assert row.frequency_hz == 581.0
     assert row.expected_frequency_hz == 581.0
     assert row.z2_power == 42.0
+    assert row.leahy_power == 40.0
     assert row.p_single == pytest.approx(math.exp(-21.0))
     assert row.p_trials == pytest.approx(1.0 - (1.0 - math.exp(-21.0)) ** 5)
     assert row.fractional_rms == 0.12
@@ -103,6 +104,7 @@ def test_write_candidate_review_round_trips_detection_and_non_detection() -> Non
     assert rows[0].window_start is None
     assert rows[0].frequency_hz is None
     assert rows[0].z2_power is None
+    assert rows[0].leahy_power is None
     assert rows[0].p_single is None
     assert rows[0].p_trials is None
     assert rows[0].reasons == ("no_searched_windows",)
@@ -131,6 +133,7 @@ def test_initialize_candidate_catalog_creates_expected_table() -> None:
     }
     assert "p_single" in columns
     assert "p_trials" in columns
+    assert "leahy_power" in columns
 
 
 def test_control_catalog_row_from_review_preserves_control_and_review_fields() -> None:
@@ -160,6 +163,7 @@ def test_control_catalog_row_from_review_preserves_control_and_review_fields() -
     assert row.classification == PROBABLE_DETECTION
     assert row.energy_band == "2-20 keV"
     assert row.z2_power == 42.0
+    assert row.leahy_power == 40.0
     assert row.p_single == pytest.approx(math.exp(-21.0))
     assert row.p_trials == pytest.approx(1.0 - (1.0 - math.exp(-21.0)) ** 5)
     assert row.pipeline_version == "phase1-test"
@@ -200,6 +204,7 @@ def test_write_control_search_run_round_trips_detection_and_non_detection() -> N
     assert rows[0].window_start is None
     assert rows[0].p_single is None
     assert rows[1].classification == PROBABLE_DETECTION
+    assert rows[1].leahy_power == 40.0
     assert rows[1].p_single == pytest.approx(math.exp(-21.0))
 
 
@@ -222,6 +227,7 @@ def test_initialize_control_catalog_creates_expected_table() -> None:
     }
     assert "control_id" in columns
     assert "control_kind" in columns
+    assert "leahy_power" in columns
     assert "p_trials" in columns
 
 
@@ -281,6 +287,7 @@ def test_candidate_catalog_row_from_review_validates_numeric_fields() -> None:
         fractional_rms=0.12,
         phase_rad=1.25,
         reasons=(),
+        leahy_power=40.0,
     )
 
     with pytest.raises(CatalogWriteError, match="trial_count"):
@@ -311,6 +318,7 @@ def test_candidate_catalog_row_from_review_requires_harmonic_metadata_for_power(
         fractional_rms=0.12,
         phase_rad=1.25,
         reasons=(),
+        leahy_power=40.0,
     )
 
     with pytest.raises(CatalogWriteError, match="n_harmonics"):
@@ -341,6 +349,7 @@ def _probable_review() -> OscillationCandidateReview:
         fractional_rms=0.12,
         phase_rad=1.25,
         reasons=("z2_below_secure_threshold",),
+        leahy_power=40.0,
     )
 
 

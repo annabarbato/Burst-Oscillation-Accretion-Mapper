@@ -3,7 +3,8 @@
 This module implements a narrow `Z_n^2` search around known source frequencies
 for RXTE validation bursts. It is not a blind 500 Hz to 1 kHz scanner, does not
 assign candidate classes, and does not perform trials correction or background
-correction yet.
+correction yet. The Leahy diagnostic stored here is the first-harmonic
+event-based Rayleigh/Leahy power at each trial frequency.
 """
 
 from __future__ import annotations
@@ -87,6 +88,7 @@ class Z2FrequencyPower:
 
     frequency_hz: float
     z2_power: float
+    leahy_power: float
     n_harmonics: int
     photon_count: int
     first_harmonic_phase_rad: float
@@ -219,6 +221,22 @@ def z_n_squared(
     return 2.0 * power_sum / len(times)
 
 
+def leahy_normalized_power(
+    times: tuple[float, ...],
+    *,
+    frequency_hz: float,
+    reference_time: float | None = None,
+) -> float:
+    """Return the first-harmonic Leahy/Rayleigh event power diagnostic."""
+
+    return z_n_squared(
+        times,
+        frequency_hz=frequency_hz,
+        n_harmonics=1,
+        reference_time=reference_time,
+    )
+
+
 def make_sliding_windows(
     interval: TimeInterval, *, config: SlidingWindowConfig
 ) -> tuple[TimeInterval, ...]:
@@ -259,6 +277,11 @@ def search_event_product_targeted_z2(
                 selected.times,
                 frequency_hz=frequency_hz,
                 n_harmonics=config.n_harmonics,
+                reference_time=config.reference_time,
+            ),
+            leahy_power=leahy_normalized_power(
+                selected.times,
+                frequency_hz=frequency_hz,
                 reference_time=config.reference_time,
             ),
             n_harmonics=config.n_harmonics,

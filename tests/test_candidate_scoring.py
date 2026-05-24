@@ -41,6 +41,7 @@ def test_score_targeted_z2_result_keeps_strong_candidate_probable_without_later_
     assert review.frequency_hz == 10.0
     assert review.frequency_offset_hz == 0.0
     assert review.z2_power == pytest.approx(20.0)
+    assert review.leahy_power == pytest.approx(20.0)
     assert review.fractional_rms == pytest.approx(math.sqrt(2.0))
     assert review.phase_rad == pytest.approx(0.0, abs=1e-12)
     assert review.trial_count == 3
@@ -182,6 +183,7 @@ def test_score_sliding_targeted_z2_result_records_empty_non_detection() -> None:
     assert review.classification == NON_DETECTION
     assert review.window is None
     assert review.frequency_hz is None
+    assert review.leahy_power is None
     assert review.trial_count == 0
     assert review.reasons == ("no_searched_windows",)
 
