@@ -4,6 +4,7 @@ This directory is reserved for automated tests and small fixtures.
 
 Expected early test areas:
 
+- No-download archive planning for selected RXTE/PCA raw products.
 - Manifest parsing and validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - In-memory event product slicing on synthetic events.
