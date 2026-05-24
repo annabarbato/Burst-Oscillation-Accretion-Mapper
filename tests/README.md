@@ -13,11 +13,12 @@ Expected early test areas:
 - Manifest parsing and validation.
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
+- Targeted event-based `Z_n^2` oscillation-search primitives on synthetic events.
 - GTI-corrected single- and multi-cadence light-curve binning plus baseline estimation on synthetic events.
 - In-memory event product slicing on synthetic events.
 - Time-window and GTI handling with half-open event intervals.
 - Synthetic event fixtures with known burst envelopes.
-- Targeted oscillation-search fixtures once Phase 1 begins.
+- Targeted oscillation-search fixtures for later known-frequency validation windows.
 
 Large mission data products must not be committed as fixtures. Use tiny synthetic data or documented external-data skips.
 
