@@ -202,15 +202,27 @@ class MultiCadenceBurstCandidateCluster:
         return tuple(sorted({review.bin_size for review in self.reviews}))
 
     @property
-    def best_review(self) -> BurstCandidateReview:
+    def review_count(self) -> int:
+        return len(self.reviews)
+
+    @property
+    def passed_review_count(self) -> int:
+        return sum(review.review.passes_review for review in self.reviews)
+
+    @property
+    def best_cadence_review(self) -> MultiCadenceBurstCandidateReview:
         return max(
-            (review.review for review in self.reviews),
-            key=lambda review: (
-                review.candidate.peak_score,
-                review.morphology.excess_counts,
-                review.candidate.duration,
+            self.reviews,
+            key=lambda cadence_review: (
+                cadence_review.review.candidate.peak_score,
+                cadence_review.review.morphology.excess_counts,
+                cadence_review.review.candidate.duration,
             ),
         )
+
+    @property
+    def best_review(self) -> BurstCandidateReview:
+        return self.best_cadence_review.review
 
     @property
     def best_peak_score(self) -> float:
@@ -219,6 +231,38 @@ class MultiCadenceBurstCandidateCluster:
     @property
     def passes_any_review(self) -> bool:
         return any(review.review.passes_review for review in self.reviews)
+
+    @property
+    def rejection_reasons(self) -> tuple[str, ...]:
+        reasons = {
+            reason
+            for review in self.reviews
+            for reason in review.review.rejection_reasons
+        }
+        return tuple(sorted(reasons))
+
+
+@dataclass(frozen=True)
+class MultiCadenceBurstCandidateSummary:
+    """Stable review product for one multi-cadence candidate cluster."""
+
+    start: float
+    peak_time: float
+    stop: float
+    duration: float
+    bin_sizes: tuple[float, ...]
+    best_bin_size: float
+    review_count: int
+    passed_review_count: int
+    best_peak_score: float
+    best_excess_counts: float
+    total_counts: int
+    total_expected_counts: float
+    rejection_reasons: tuple[str, ...]
+
+    @property
+    def passes_any_review(self) -> bool:
+        return self.passed_review_count > 0
 
 
 def signed_poisson_sqrt_deviance(observed_counts: int, expected_counts: float) -> float:
@@ -448,6 +492,24 @@ def find_multi_cadence_burst_reviews(
     return tuple(reviews)
 
 
+def find_multi_cadence_burst_clusters(
+    light_curves: MultiCadenceLightCurves,
+    *,
+    detection_configs: dict[float, BurstDetectionConfig],
+    morphology_config: MorphologyReviewConfig = MorphologyReviewConfig(),
+    passed_only: bool = False,
+) -> tuple[MultiCadenceBurstCandidateCluster, ...]:
+    """Run multi-cadence review and cluster overlapping interval candidates."""
+
+    reviews = find_multi_cadence_burst_reviews(
+        light_curves,
+        detection_configs=detection_configs,
+        morphology_config=morphology_config,
+        passed_only=passed_only,
+    )
+    return cluster_overlapping_candidate_reviews(reviews)
+
+
 def cluster_overlapping_candidate_reviews(
     reviews: tuple[MultiCadenceBurstCandidateReview, ...],
 ) -> tuple[MultiCadenceBurstCandidateCluster, ...]:
@@ -496,6 +558,40 @@ def cluster_overlapping_candidate_reviews(
         )
     )
     return tuple(clusters)
+
+
+def summarize_multi_cadence_candidate_cluster(
+    cluster: MultiCadenceBurstCandidateCluster,
+) -> MultiCadenceBurstCandidateSummary:
+    """Summarize a cluster without promoting it to a validated burst."""
+
+    best_cadence_review = cluster.best_cadence_review
+    best_review = best_cadence_review.review
+    return MultiCadenceBurstCandidateSummary(
+        start=cluster.start,
+        peak_time=best_review.morphology.peak_time,
+        stop=cluster.stop,
+        duration=cluster.duration,
+        bin_sizes=cluster.bin_sizes,
+        best_bin_size=best_cadence_review.bin_size,
+        review_count=cluster.review_count,
+        passed_review_count=cluster.passed_review_count,
+        best_peak_score=best_review.candidate.peak_score,
+        best_excess_counts=best_review.morphology.excess_counts,
+        total_counts=best_review.candidate.total_counts,
+        total_expected_counts=best_review.candidate.total_expected_counts,
+        rejection_reasons=cluster.rejection_reasons,
+    )
+
+
+def summarize_multi_cadence_candidate_clusters(
+    clusters: tuple[MultiCadenceBurstCandidateCluster, ...],
+) -> tuple[MultiCadenceBurstCandidateSummary, ...]:
+    """Summarize candidate clusters for later MINBAR/catalog comparison."""
+
+    return tuple(
+        summarize_multi_cadence_candidate_cluster(cluster) for cluster in clusters
+    )
 
 
 def _append_candidate_if_valid(

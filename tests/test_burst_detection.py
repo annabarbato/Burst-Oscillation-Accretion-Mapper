@@ -12,12 +12,15 @@ from burst_oscillation_accretion_mapper.burst_detection import (
     MorphologyReviewConfig,
     cluster_overlapping_candidate_reviews,
     find_burst_interval_reviews,
+    find_multi_cadence_burst_clusters,
     find_multi_cadence_burst_reviews,
     group_excess_bins,
     review_candidate_morphology,
     score_light_curve_excess,
     signed_poisson_sqrt_deviance,
     summarize_candidate_morphology,
+    summarize_multi_cadence_candidate_cluster,
+    summarize_multi_cadence_candidate_clusters,
 )
 from burst_oscillation_accretion_mapper.event_products import EventProduct
 from burst_oscillation_accretion_mapper.lightcurves import (
@@ -405,6 +408,8 @@ def test_cluster_overlapping_candidate_reviews_groups_cadences() -> None:
     assert clusters[0].start == 2.0
     assert clusters[0].stop == 3.0
     assert clusters[0].bin_sizes == (0.5, 1.0)
+    assert clusters[0].review_count == 2
+    assert clusters[0].passed_review_count == 2
     assert clusters[0].passes_any_review
     assert clusters[0].best_peak_score == pytest.approx(
         max(review.review.candidate.peak_score for review in reviews)
@@ -423,6 +428,104 @@ def test_cluster_overlapping_candidate_reviews_keeps_separate_intervals() -> Non
     clusters = cluster_overlapping_candidate_reviews(reviews)
 
     assert [(cluster.start, cluster.stop) for cluster in clusters] == [
+        (2.0, 3.0),
+        (4.0, 5.0),
+    ]
+
+
+def test_find_multi_cadence_burst_clusters_wraps_review_and_clustering() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+
+    clusters = find_multi_cadence_burst_clusters(
+        light_curves,
+        detection_configs={
+            1.0: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=3.0,
+                excluded_bins=frozenset({2}),
+            ),
+            0.5: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=2.0,
+                excluded_bins=frozenset({4, 5}),
+            ),
+        },
+        morphology_config=MorphologyReviewConfig(
+            min_excess_counts=1.0,
+            min_peak_score=2.0,
+        ),
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].start == 2.0
+    assert clusters[0].stop == 3.0
+    assert clusters[0].bin_sizes == (0.5, 1.0)
+
+
+def test_summarize_multi_cadence_candidate_cluster_uses_best_review() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+    clusters = find_multi_cadence_burst_clusters(
+        light_curves,
+        detection_configs={
+            1.0: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=3.0,
+                excluded_bins=frozenset({2}),
+            ),
+            0.5: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=2.0,
+                excluded_bins=frozenset({4, 5}),
+            ),
+        },
+        morphology_config=MorphologyReviewConfig(
+            min_excess_counts=1.0,
+            min_peak_score=2.0,
+        ),
+    )
+
+    summary = summarize_multi_cadence_candidate_cluster(clusters[0])
+
+    assert summary.start == 2.0
+    assert summary.peak_time == 2.5
+    assert summary.stop == 3.0
+    assert summary.duration == 1.0
+    assert summary.bin_sizes == (0.5, 1.0)
+    assert summary.best_bin_size == 1.0
+    assert summary.review_count == 2
+    assert summary.passed_review_count == 2
+    assert summary.passes_any_review
+    assert summary.best_peak_score == clusters[0].best_peak_score
+    assert summary.best_excess_counts == 8.0
+    assert summary.total_counts == 9
+    assert summary.total_expected_counts == 1.0
+    assert summary.rejection_reasons == ()
+
+
+def test_summarize_multi_cadence_candidate_clusters_preserves_order() -> None:
+    clusters = cluster_overlapping_candidate_reviews(
+        tuple(
+            MultiCadenceBurstCandidateReview(
+                bin_size=1.0,
+                review=_review_for_interval(start=start, stop=stop),
+            )
+            for start, stop in ((2.0, 3.0), (4.0, 5.0))
+        )
+    )
+
+    summaries = summarize_multi_cadence_candidate_clusters(clusters)
+
+    assert [(summary.start, summary.stop) for summary in summaries] == [
         (2.0, 3.0),
         (4.0, 5.0),
     ]
