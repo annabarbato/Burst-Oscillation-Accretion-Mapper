@@ -11,11 +11,54 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite, log, sqrt
 
-from .lightcurves import BaselineEstimate, LightCurve, LightCurveError
+from .lightcurves import (
+    BaselineEstimate,
+    LightCurve,
+    LightCurveError,
+    estimate_rolling_baseline,
+)
 
 
 class BurstDetectionError(ValueError):
     """Raised when burst-detection scoring inputs are invalid."""
+
+
+@dataclass(frozen=True)
+class BurstDetectionConfig:
+    """Configuration for one light-curve candidate-finding pass."""
+
+    baseline_window_bins: int
+    excess_threshold: float
+    min_consecutive_bins: int = 1
+    excluded_bins: frozenset[int] = frozenset()
+
+    def __post_init__(self) -> None:
+        if self.baseline_window_bins < 1:
+            raise BurstDetectionError("baseline_window_bins must be at least 1")
+        if not isfinite(self.excess_threshold) or self.excess_threshold <= 0:
+            raise BurstDetectionError("excess_threshold must be positive")
+        if self.min_consecutive_bins < 1:
+            raise BurstDetectionError("min_consecutive_bins must be at least 1")
+
+
+@dataclass(frozen=True)
+class MorphologyReviewConfig:
+    """Conservative binned-shape checks for interval candidates."""
+
+    min_excess_counts: float = 0.0
+    min_peak_score: float = 0.0
+    require_fast_rise_slow_decay: bool = False
+    max_rise_fraction: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.min_excess_counts < 0:
+            raise BurstDetectionError("min_excess_counts cannot be negative")
+        if self.min_peak_score < 0:
+            raise BurstDetectionError("min_peak_score cannot be negative")
+        if self.max_rise_fraction is not None and not (
+            0.0 < self.max_rise_fraction <= 1.0
+        ):
+            raise BurstDetectionError("max_rise_fraction must be in (0, 1]")
 
 
 @dataclass(frozen=True)
@@ -87,6 +130,36 @@ class BurstMorphologySummary:
             self.approximate_rise_time > 0
             and self.approximate_decay_time >= self.approximate_rise_time
         )
+
+
+@dataclass(frozen=True)
+class BurstCandidateReview:
+    """Candidate plus binned morphology review outcome."""
+
+    candidate: BurstIntervalCandidate
+    morphology: BurstMorphologySummary
+    rejection_reasons: tuple[str, ...]
+
+    @property
+    def passes_review(self) -> bool:
+        return not self.rejection_reasons
+
+
+@dataclass(frozen=True)
+class BurstCandidateSearchResult:
+    """Intermediate products from one light-curve candidate-finding pass."""
+
+    baseline: BaselineEstimate
+    scores: tuple[BinExcessScore, ...]
+    reviews: tuple[BurstCandidateReview, ...]
+
+    @property
+    def candidates(self) -> tuple[BurstIntervalCandidate, ...]:
+        return tuple(review.candidate for review in self.reviews)
+
+    @property
+    def passed_reviews(self) -> tuple[BurstCandidateReview, ...]:
+        return tuple(review for review in self.reviews if review.passes_review)
 
 
 def signed_poisson_sqrt_deviance(observed_counts: int, expected_counts: float) -> float:
@@ -213,6 +286,72 @@ def summarize_candidate_morphology(
         excess_counts=candidate.excess_counts,
         n_bins=candidate.n_bins,
     )
+
+
+def review_candidate_morphology(
+    candidate: BurstIntervalCandidate,
+    morphology: BurstMorphologySummary,
+    *,
+    config: MorphologyReviewConfig,
+) -> BurstCandidateReview:
+    """Apply binned morphology checks without declaring a validated burst."""
+
+    reasons: list[str] = []
+    if morphology.excess_counts < config.min_excess_counts:
+        reasons.append("excess_counts_below_threshold")
+    if candidate.peak_score < config.min_peak_score:
+        reasons.append("peak_score_below_threshold")
+    if (
+        config.require_fast_rise_slow_decay
+        and not morphology.has_fast_rise_slow_decay_shape
+    ):
+        reasons.append("not_fast_rise_slow_decay")
+    if (
+        config.max_rise_fraction is not None
+        and morphology.rise_fraction > config.max_rise_fraction
+    ):
+        reasons.append("rise_fraction_above_threshold")
+
+    return BurstCandidateReview(
+        candidate=candidate,
+        morphology=morphology,
+        rejection_reasons=tuple(reasons),
+    )
+
+
+def find_burst_interval_reviews(
+    light_curve: LightCurve,
+    *,
+    detection_config: BurstDetectionConfig,
+    morphology_config: MorphologyReviewConfig = MorphologyReviewConfig(),
+) -> BurstCandidateSearchResult:
+    """Find and review interval candidates in one binned light curve.
+
+    This is still an intermediate detector primitive. Later code must add
+    multi-cadence reconciliation, morphology filters beyond these binned checks,
+    and MINBAR validation before accepting burst detections.
+    """
+
+    baseline = estimate_rolling_baseline(
+        light_curve,
+        window_bins=detection_config.baseline_window_bins,
+        excluded_bins=detection_config.excluded_bins,
+    )
+    scores = score_light_curve_excess(light_curve, baseline)
+    candidates = group_excess_bins(
+        scores,
+        threshold=detection_config.excess_threshold,
+        min_consecutive_bins=detection_config.min_consecutive_bins,
+    )
+    reviews = tuple(
+        review_candidate_morphology(
+            candidate,
+            summarize_candidate_morphology(light_curve, candidate),
+            config=morphology_config,
+        )
+        for candidate in candidates
+    )
+    return BurstCandidateSearchResult(baseline=baseline, scores=scores, reviews=reviews)
 
 
 def _append_candidate_if_valid(

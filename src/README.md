@@ -15,7 +15,7 @@ Expected Phase 1 modules should align with the conceptual interfaces in `docs/ar
 Current modules:
 
 - `burst_oscillation_accretion_mapper.archive_plan`: no-download RXTE raw archive planning from validation manifests.
-- `burst_oscillation_accretion_mapper.burst_detection`: Poisson excess bin scoring, grouping of adjacent interval candidates, and binned morphology summaries for later review.
+- `burst_oscillation_accretion_mapper.burst_detection`: configurable Poisson excess scoring, grouping of adjacent interval candidates, and binned morphology review.
 - `burst_oscillation_accretion_mapper.event_products`: in-memory event product metadata, provenance, GTI-aware slicing, and energy filtering primitives.
 - `burst_oscillation_accretion_mapper.external_tools`: read-only HEASoft/CALDB environment snapshots.
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.

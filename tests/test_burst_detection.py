@@ -3,9 +3,13 @@ import math
 import pytest
 
 from burst_oscillation_accretion_mapper.burst_detection import (
-    BurstIntervalCandidate,
+    BurstDetectionConfig,
     BurstDetectionError,
+    BurstIntervalCandidate,
+    MorphologyReviewConfig,
+    find_burst_interval_reviews,
     group_excess_bins,
+    review_candidate_morphology,
     score_light_curve_excess,
     signed_poisson_sqrt_deviance,
     summarize_candidate_morphology,
@@ -124,6 +128,19 @@ def test_group_excess_bins_rejects_invalid_threshold() -> None:
         group_excess_bins((), threshold=0.0)
 
 
+def test_burst_detection_config_validates_thresholds() -> None:
+    with pytest.raises(BurstDetectionError, match="baseline_window_bins"):
+        BurstDetectionConfig(baseline_window_bins=0, excess_threshold=3.0)
+
+    with pytest.raises(BurstDetectionError, match="excess_threshold"):
+        BurstDetectionConfig(baseline_window_bins=1, excess_threshold=0.0)
+
+
+def test_morphology_review_config_validates_rise_fraction() -> None:
+    with pytest.raises(BurstDetectionError, match="max_rise_fraction"):
+        MorphologyReviewConfig(max_rise_fraction=2.0)
+
+
 def test_summarize_candidate_morphology_reports_binned_features() -> None:
     product = EventProduct(
         source_id="source",
@@ -182,3 +199,85 @@ def test_summarize_candidate_morphology_rejects_out_of_range_candidate() -> None
 
     with pytest.raises(BurstDetectionError, match="outside the light curve"):
         summarize_candidate_morphology(light_curve, candidate)
+
+
+def test_review_candidate_morphology_reports_rejection_reasons() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(0.1, 1.1, 2.1, 2.2, 2.3, 2.4, 3.1),
+        gtis=(TimeInterval(0.0, 4.0),),
+    )
+    light_curve = make_light_curve(
+        product, interval=TimeInterval(0.0, 4.0), bin_size=1.0
+    )
+    baseline = estimate_rolling_baseline(
+        light_curve, window_bins=2, excluded_bins=frozenset({2})
+    )
+    scores = score_light_curve_excess(light_curve, baseline)
+    candidate = group_excess_bins(scores, threshold=1.5)[0]
+    morphology = summarize_candidate_morphology(light_curve, candidate)
+
+    review = review_candidate_morphology(
+        candidate,
+        morphology,
+        config=MorphologyReviewConfig(
+            min_excess_counts=5.0,
+            min_peak_score=10.0,
+            max_rise_fraction=0.5,
+        ),
+    )
+
+    assert not review.passes_review
+    assert review.rejection_reasons == (
+        "excess_counts_below_threshold",
+        "peak_score_below_threshold",
+        "rise_fraction_above_threshold",
+    )
+
+
+def test_find_burst_interval_reviews_returns_intermediate_products() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(
+            0.1,
+            1.1,
+            2.1,
+            2.2,
+            2.3,
+            2.4,
+            2.5,
+            2.6,
+            2.7,
+            2.8,
+            2.9,
+            3.1,
+            4.1,
+        ),
+        gtis=(TimeInterval(0.0, 5.0),),
+    )
+    light_curve = make_light_curve(
+        product, interval=TimeInterval(0.0, 5.0), bin_size=1.0
+    )
+
+    result = find_burst_interval_reviews(
+        light_curve,
+        detection_config=BurstDetectionConfig(
+            baseline_window_bins=2,
+            excess_threshold=3.0,
+            excluded_bins=frozenset({2}),
+        ),
+        morphology_config=MorphologyReviewConfig(
+            min_excess_counts=5.0,
+            min_peak_score=3.0,
+        ),
+    )
+
+    assert len(result.scores) == light_curve.n_bins
+    assert len(result.candidates) == 1
+    assert len(result.passed_reviews) == 1
+    assert result.passed_reviews[0].candidate.start == 2.0
+    assert result.passed_reviews[0].morphology.excess_counts == 8.0
