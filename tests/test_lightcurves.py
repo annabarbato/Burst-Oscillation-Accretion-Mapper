@@ -5,6 +5,7 @@ from burst_oscillation_accretion_mapper.lightcurves import (
     LightCurveError,
     estimate_rolling_baseline,
     make_light_curve,
+    make_multi_cadence_light_curves,
 )
 from burst_oscillation_accretion_mapper.time_intervals import TimeInterval
 
@@ -184,3 +185,36 @@ def test_estimate_rolling_baseline_rejects_invalid_window() -> None:
 
     with pytest.raises(LightCurveError, match="window_bins"):
         estimate_rolling_baseline(light_curve, window_bins=0)
+
+
+def test_make_multi_cadence_light_curves_returns_requested_bin_sizes() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(0.1, 0.6, 1.1, 1.6),
+        gtis=(TimeInterval(0.0, 2.0),),
+    )
+
+    multi = make_multi_cadence_light_curves(
+        product, interval=TimeInterval(0.0, 2.0), bin_sizes=(1.0, 0.5)
+    )
+
+    assert multi.bin_sizes == (0.5, 1.0)
+    assert multi.get(1.0).counts == (2, 2)
+    assert multi.get(0.5).counts == (1, 1, 1, 1)
+
+
+def test_make_multi_cadence_light_curves_rejects_duplicate_bin_sizes() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(),
+        gtis=(),
+    )
+
+    with pytest.raises(LightCurveError, match="Duplicate"):
+        make_multi_cadence_light_curves(
+            product, interval=TimeInterval(0.0, 1.0), bin_sizes=(1.0, 1.0)
+        )

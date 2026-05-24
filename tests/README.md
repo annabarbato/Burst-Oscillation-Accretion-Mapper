@@ -4,7 +4,7 @@ This directory is reserved for automated tests and small fixtures.
 
 Expected early test areas:
 
-- Poisson excess scoring and conservative interval grouping on synthetic light curves.
+- Poisson excess scoring, conservative interval grouping, and binned morphology summaries on synthetic light curves.
 - No-download archive planning for selected RXTE/PCA raw products.
 - HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.
@@ -12,7 +12,7 @@ Expected early test areas:
 - RXTE/PCA ingestion preflight behavior before FITS parsing.
 - Manifest parsing and validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
-- GTI-corrected light-curve binning and baseline estimation on synthetic events.
+- GTI-corrected single- and multi-cadence light-curve binning plus baseline estimation on synthetic events.
 - In-memory event product slicing on synthetic events.
 - Time-window and GTI handling with half-open event intervals.
 - Synthetic event fixtures with known burst envelopes.

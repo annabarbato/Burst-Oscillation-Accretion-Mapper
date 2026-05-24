@@ -75,6 +75,24 @@ class BaselineEstimate:
             raise LightCurveError("Baseline columns must have matching lengths")
 
 
+@dataclass(frozen=True)
+class MultiCadenceLightCurves:
+    """Light curves for one interval at multiple bin sizes."""
+
+    light_curves_by_bin_size: dict[float, LightCurve]
+
+    def __post_init__(self) -> None:
+        if not self.light_curves_by_bin_size:
+            raise LightCurveError("At least one light curve is required")
+
+    @property
+    def bin_sizes(self) -> tuple[float, ...]:
+        return tuple(sorted(self.light_curves_by_bin_size))
+
+    def get(self, bin_size: float) -> LightCurve:
+        return self.light_curves_by_bin_size[bin_size]
+
+
 def make_light_curve(
     event_product: EventProduct, *, interval: TimeInterval, bin_size: float
 ) -> LightCurve:
@@ -107,6 +125,29 @@ def make_light_curve(
         bin_stops=tuple(bin_interval.stop for bin_interval in bins),
         counts=tuple(counts),
         exposures=exposures,
+    )
+
+
+def make_multi_cadence_light_curves(
+    event_product: EventProduct,
+    *,
+    interval: TimeInterval,
+    bin_sizes: tuple[float, ...],
+) -> MultiCadenceLightCurves:
+    """Build light curves for one interval at multiple cadences."""
+
+    if not bin_sizes:
+        raise LightCurveError("At least one bin size is required")
+    if len(set(bin_sizes)) != len(bin_sizes):
+        raise LightCurveError("Duplicate bin sizes are not allowed")
+
+    return MultiCadenceLightCurves(
+        {
+            bin_size: make_light_curve(
+                event_product, interval=interval, bin_size=bin_size
+            )
+            for bin_size in bin_sizes
+        }
     )
 
 

@@ -61,6 +61,34 @@ class BurstIntervalCandidate:
         return self.total_counts - self.total_expected_counts
 
 
+@dataclass(frozen=True)
+class BurstMorphologySummary:
+    """Binned morphology features for an interval candidate under review."""
+
+    start: float
+    peak_time: float
+    stop: float
+    duration: float
+    approximate_rise_time: float
+    approximate_decay_time: float
+    peak_rate: float | None
+    total_counts: int
+    total_expected_counts: float
+    excess_counts: float
+    n_bins: int
+
+    @property
+    def rise_fraction(self) -> float:
+        return self.approximate_rise_time / self.duration if self.duration > 0 else 0.0
+
+    @property
+    def has_fast_rise_slow_decay_shape(self) -> bool:
+        return (
+            self.approximate_rise_time > 0
+            and self.approximate_decay_time >= self.approximate_rise_time
+        )
+
+
 def signed_poisson_sqrt_deviance(observed_counts: int, expected_counts: float) -> float:
     """Return signed square root of the Poisson likelihood-ratio deviance.
 
@@ -149,6 +177,42 @@ def group_excess_bins(
             current = []
     _append_candidate_if_valid(candidates, current, min_consecutive_bins)
     return tuple(candidates)
+
+
+def summarize_candidate_morphology(
+    light_curve: LightCurve, candidate: BurstIntervalCandidate
+) -> BurstMorphologySummary:
+    """Summarize binned morphology for a candidate interval.
+
+    These binned features are inputs to later morphology review. They are not
+    sufficient to classify an interval as a thermonuclear burst.
+    """
+
+    if candidate.first_bin_index < 0 or candidate.last_bin_index >= light_curve.n_bins:
+        raise BurstDetectionError("Candidate bin range is outside the light curve")
+    if not candidate.first_bin_index <= candidate.peak_bin_index <= candidate.last_bin_index:
+        raise BurstDetectionError("Candidate peak bin is outside the candidate range")
+
+    peak_start = light_curve.bin_starts[candidate.peak_bin_index]
+    peak_stop = light_curve.bin_stops[candidate.peak_bin_index]
+    peak_time = 0.5 * (peak_start + peak_stop)
+    peak_rate = light_curve.rates[candidate.peak_bin_index]
+    approximate_rise_time = peak_stop - candidate.start
+    approximate_decay_time = candidate.stop - peak_start
+
+    return BurstMorphologySummary(
+        start=candidate.start,
+        peak_time=peak_time,
+        stop=candidate.stop,
+        duration=candidate.duration,
+        approximate_rise_time=approximate_rise_time,
+        approximate_decay_time=approximate_decay_time,
+        peak_rate=peak_rate,
+        total_counts=candidate.total_counts,
+        total_expected_counts=candidate.total_expected_counts,
+        excess_counts=candidate.excess_counts,
+        n_bins=candidate.n_bins,
+    )
 
 
 def _append_candidate_if_valid(
