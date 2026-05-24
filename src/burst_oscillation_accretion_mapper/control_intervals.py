@@ -25,6 +25,7 @@ PRE_BURST_CONTROL = "pre_burst"
 POST_BURST_CONTROL = "post_burst"
 NEIGHBORING_PRE_BURST_CONTROL = "neighboring_non_burst_before"
 NEIGHBORING_POST_BURST_CONTROL = "neighboring_non_burst_after"
+SYNTHETIC_POISSON_CONTROL = "synthetic_poisson_null"
 
 
 class ControlIntervalError(ValueError):

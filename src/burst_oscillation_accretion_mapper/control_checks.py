@@ -1,8 +1,10 @@
 """Empirical control-window false-alarm checks for Phase 1.
 
 This module composes existing control-window, targeted-search, and candidate
-scoring primitives. It does not generate synthetic Poisson envelopes, estimate
-p-values, perform trials correction, or change candidate thresholds.
+scoring primitives. It can also score synthetic Poisson null realizations for
+Phase 1 empirical false-alarm review. It does not inject coherent oscillations,
+estimate sensitivity curves, perform trials correction, or change candidate
+thresholds.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from .control_intervals import (
     ControlReview,
     ControlWindow,
     ControlWindowConfig,
+    SYNTHETIC_POISSON_CONTROL,
     build_pre_post_control_windows,
     summarize_control_reviews,
 )
@@ -29,6 +32,12 @@ from .oscillation_search import (
     SlidingWindowConfig,
     TargetedZ2SearchConfig,
     search_event_product_sliding_targeted_z2,
+)
+from .synthetic_controls import (
+    PoissonEnvelopeConfig,
+    SyntheticPoissonControlConfig,
+    estimate_poisson_count_rate_envelope,
+    generate_synthetic_poisson_event_product,
 )
 from .time_intervals import TimeInterval
 
@@ -155,6 +164,61 @@ def build_search_and_score_pre_post_controls(
     )
 
 
+def build_search_and_score_synthetic_poisson_controls(
+    event_product: EventProduct,
+    *,
+    reference_interval: TimeInterval,
+    synthetic_config: SyntheticPoissonControlConfig,
+    window_config: SlidingWindowConfig,
+    search_config: TargetedZ2SearchConfig,
+    scoring_config: CandidateScoringConfig,
+    expected_frequency_hz: float | None,
+    burst_id: str = "",
+    evidence: CandidateEvidenceFlags = CandidateEvidenceFlags(),
+) -> ControlSearchRun:
+    """Generate and score synthetic Poisson null controls for one interval."""
+
+    envelope = estimate_poisson_count_rate_envelope(
+        event_product,
+        interval=reference_interval,
+        config=PoissonEnvelopeConfig(bin_size_s=synthetic_config.envelope_bin_size_s),
+    )
+    control_reviews: list[ControlReview] = []
+    for realization_number in range(1, synthetic_config.realization_count + 1):
+        synthetic_product = generate_synthetic_poisson_event_product(
+            event_product,
+            envelope=envelope,
+            seed=synthetic_config.seed_for_realization(realization_number),
+            realization_number=realization_number,
+        )
+        control = ControlWindow(
+            control_id=_synthetic_control_id(burst_id, realization_number),
+            kind=SYNTHETIC_POISSON_CONTROL,
+            interval=reference_interval,
+            requested_interval=reference_interval,
+            burst_id=burst_id,
+        )
+        control_reviews.append(
+            ControlReview(
+                control=control,
+                review=_score_control_window(
+                    synthetic_product,
+                    control=control,
+                    window_config=window_config,
+                    search_config=search_config,
+                    scoring_config=scoring_config,
+                    expected_frequency_hz=expected_frequency_hz,
+                    evidence=evidence,
+                ),
+            )
+        )
+
+    return ControlSearchRun(
+        control_reviews=tuple(control_reviews),
+        summary=summarize_control_reviews(tuple(control_reviews)),
+    )
+
+
 def evaluate_control_clearance(
     control_run: ControlSearchRun,
     *,
@@ -227,6 +291,11 @@ def _score_control_window(
         expected_frequency_hz=expected_frequency_hz,
         evidence=evidence,
     )
+
+
+def _synthetic_control_id(burst_id: str, realization_number: int) -> str:
+    prefix = burst_id.strip() if burst_id.strip() else "control"
+    return f"{prefix}_{SYNTHETIC_POISSON_CONTROL}_{realization_number:03d}"
 
 
 def _require_non_negative_int(value: int, field: str) -> None:

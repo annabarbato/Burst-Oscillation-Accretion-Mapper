@@ -9,6 +9,7 @@ from burst_oscillation_accretion_mapper.candidate_scoring import (
 from burst_oscillation_accretion_mapper.control_checks import (
     ControlCheckError,
     ControlClearancePolicy,
+    build_search_and_score_synthetic_poisson_controls,
     build_search_and_score_pre_post_controls,
     evaluate_control_clearance,
     evidence_with_control_clearance,
@@ -17,6 +18,7 @@ from burst_oscillation_accretion_mapper.control_checks import (
 from burst_oscillation_accretion_mapper.control_intervals import (
     POST_BURST_CONTROL,
     PRE_BURST_CONTROL,
+    SYNTHETIC_POISSON_CONTROL,
     ControlWindowConfig,
     build_pre_post_control_windows,
 )
@@ -25,6 +27,9 @@ from burst_oscillation_accretion_mapper.oscillation_search import (
     SlidingWindowConfig,
     TargetedFrequencyGrid,
     TargetedZ2SearchConfig,
+)
+from burst_oscillation_accretion_mapper.synthetic_controls import (
+    SyntheticPoissonControlConfig,
 )
 from burst_oscillation_accretion_mapper.time_intervals import TimeInterval
 
@@ -164,6 +169,43 @@ def test_search_and_score_control_windows_preserves_supplied_controls() -> None:
     assert run.summary.detection_like_count == 1
 
 
+def test_build_search_and_score_synthetic_poisson_controls_records_null_realizations() -> None:
+    run = build_search_and_score_synthetic_poisson_controls(
+        _empty_burst_envelope_product(),
+        reference_interval=TimeInterval(10.0, 11.0),
+        synthetic_config=SyntheticPoissonControlConfig(
+            envelope_bin_size_s=0.5,
+            realization_count=2,
+            base_seed=123,
+        ),
+        window_config=SlidingWindowConfig(window_size_s=1.0, step_s=1.0),
+        search_config=_search_config(),
+        scoring_config=_scoring_config(),
+        expected_frequency_hz=10.0,
+        burst_id="burst-003",
+    )
+
+    assert [control.kind for control in run.controls] == [
+        SYNTHETIC_POISSON_CONTROL,
+        SYNTHETIC_POISSON_CONTROL,
+    ]
+    assert [control.control_id for control in run.controls] == [
+        "burst-003_synthetic_poisson_null_001",
+        "burst-003_synthetic_poisson_null_002",
+    ]
+    assert [review.classification for review in run.reviews] == [
+        NON_DETECTION,
+        NON_DETECTION,
+    ]
+    assert [review.reasons for review in run.reviews] == [
+        ("no_searched_windows",),
+        ("no_searched_windows",),
+    ]
+    assert run.summary.control_count == 2
+    assert run.summary.non_detection_count == 2
+    assert run.summary.false_alarm_fraction == pytest.approx(0.0)
+
+
 def test_evidence_with_control_clearance_preserves_other_evidence_flags() -> None:
     run = search_and_score_control_windows(
         _pre_control_phase_aligned_product(),
@@ -211,6 +253,16 @@ def _pre_control_phase_aligned_product() -> EventProduct:
         instrument="RXTE/PCA",
         times=tuple(9.0 + index * 0.1 for index in range(10)),
         gtis=(TimeInterval(0.0, 20.0),),
+    )
+
+
+def _empty_burst_envelope_product() -> EventProduct:
+    return EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(),
+        gtis=(TimeInterval(10.0, 11.0),),
     )
 
 

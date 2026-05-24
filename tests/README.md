@@ -24,6 +24,7 @@ Expected early test areas:
 - In-memory event product slicing on synthetic events.
 - Time-window and GTI handling with half-open event intervals.
 - Synthetic event fixtures with known burst envelopes.
+- Synthetic Poisson null-control products with event-rate envelopes for false-alarm review.
 - Targeted oscillation-search fixtures for later known-frequency validation windows.
 
 Large mission data products must not be committed as fixtures. Use tiny synthetic data or documented external-data skips.
