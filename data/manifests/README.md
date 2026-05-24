@@ -12,6 +12,7 @@ Canonical design constraints:
 ## Files
 
 - `sources.csv`: source-level seed metadata for known thermonuclear bursters and candidate RXTE validation sources.
+- `observations.csv`: observation-level manifest for future RXTE ObsID curation, archive links, local raw-product status, and provenance keys.
 - `validation_targets.csv`: small, curated RXTE MVP target list used to choose the first ObsIDs and sources for Phase 1 validation.
 - `references.csv`: tracked index of authoritative sources used by docs, manifests, and future provenance records.
 
@@ -43,6 +44,40 @@ Rules:
 - Frequencies must be numeric Hz values with references; leave blank when unknown or uncertain.
 - Use blank fields rather than guessed values.
 - If an ephemeris is source-specific and time-limited, describe the caveat in `notes`.
+
+## Observation Manifest Columns
+
+`observations.csv`
+
+| Column | Required | Meaning |
+| --- | --- | --- |
+| `observation_id` | Yes when rows exist | Stable internal ID, lower snake case, usually source plus ObsID. |
+| `source_id` | Yes when rows exist | Must match `sources.csv`. |
+| `instrument` | Yes when rows exist | Must be `RXTE/PCA` during Phase 0 and Phase 1. |
+| `obs_id` | Yes when rows exist | Mission observation ID. |
+| `archive_uri` | No | Authoritative HEASARC or archive URI for the observation. |
+| `archive_ref` | No | Reference ID or URL for the archive source. |
+| `start_time` | No | Observation start time when curated, preferably ISO-8601 UTC. |
+| `stop_time` | No | Observation stop time when curated, preferably ISO-8601 UTC. |
+| `exposure_s` | No | Cleaned or catalog exposure in seconds, with caveat in `notes`. |
+| `data_mode` | No | RXTE mode such as event mode or GoodXenon, when known. |
+| `raw_status` | No | `candidate`, `selected`, `downloaded`, `verified`, or `rejected`. |
+| `local_raw_path` | No | Local untracked path for downloaded raw products. |
+| `checksum` | No | Checksum for raw products when available. |
+| `event_product_uri` | No | Future processed event product path; blank in Phase 0. |
+| `software_version` | No | Future processing software version; blank before processing. |
+| `caldb_version` | No | Future calibration version; blank before processing. |
+| `screening_hash` | No | Future screening configuration hash; blank before processing. |
+| `barycorr_ref` | No | Future barycenter correction reference; blank before processing. |
+| `quality_flags` | No | Pipe-separated caveats. |
+| `notes` | No | Short curation notes and caveats. |
+
+Rules:
+
+- Phase 0 may define the schema and add candidate RXTE rows only after ObsIDs are reference-checked.
+- Do not add NICER/XTI rows until the roadmap advances to NICER work.
+- `event_product_uri`, `software_version`, `caldb_version`, `screening_hash`, and `barycorr_ref` remain blank until processing exists.
+- Local raw paths must point to untracked local storage; do not commit raw mission products.
 
 ## Validation Target Columns
 
@@ -97,11 +132,12 @@ Rules:
 ## Curation Workflow
 
 1. Add or update `sources.csv` rows with references for coordinates, source class, spin/frequency, and MINBAR mapping.
-2. Add `validation_targets.csv` rows only after the source row exists.
-3. Add or reuse `references.csv` rows for durable claims and source-specific values.
-4. Prefer RXTE/PCA targets with MINBAR coverage for the first Phase 1 MVP.
-5. Record missing but important references in `notes`; do not guess.
-6. Run `python tests/validate_manifests.py` after manifest edits.
+2. Add `observations.csv` rows only after the source row exists and the ObsID/archive reference is checked.
+3. Add `validation_targets.csv` rows only after the source row exists; add `obs_id` only when the matching observation row exists.
+4. Add or reuse `references.csv` rows for durable claims and source-specific values.
+5. Prefer RXTE/PCA targets with MINBAR coverage for the first Phase 1 MVP.
+6. Record missing but important references in `notes`; do not guess.
+7. Run `python tests/validate_manifests.py` after manifest edits.
 
 ## Current Seed Status
 

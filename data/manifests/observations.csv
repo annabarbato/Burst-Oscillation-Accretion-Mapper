@@ -1,0 +1,1 @@
+observation_id,source_id,instrument,obs_id,archive_uri,archive_ref,start_time,stop_time,exposure_s,data_mode,raw_status,local_raw_path,checksum,event_product_uri,software_version,caldb_version,screening_hash,barycorr_ref,quality_flags,notes

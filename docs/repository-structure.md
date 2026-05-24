@@ -8,43 +8,46 @@ This document records the Phase 0 repository structure proposal from `docs/roadm
 
 ```text
 .
-├── AGENTS.md
-├── LICENSE
-├── data/
-│   ├── README.md
-│   └── manifests/
-│       ├── README.md
-│       ├── sources.csv
-│       └── validation_targets.csv
-├── docs/
-│   ├── architecture.md
-│   ├── environment.md
-│   ├── repository-structure.md
-│   ├── roadmap.md
-│   └── source-citation-policy.md
-├── notebooks/
-│   └── README.md
-├── pipelines/
-│   └── README.md
-├── src/
-│   └── README.md
-└── tests/
-    └── README.md
+|-- AGENTS.md
+|-- LICENSE
+|-- data/
+|   |-- README.md
+|   `-- manifests/
+|       |-- README.md
+|       |-- observations.csv
+|       |-- references.csv
+|       |-- sources.csv
+|       `-- validation_targets.csv
+|-- docs/
+|   |-- architecture.md
+|   |-- environment.md
+|   |-- repository-structure.md
+|   |-- roadmap.md
+|   `-- source-citation-policy.md
+|-- notebooks/
+|   `-- README.md
+|-- pipelines/
+|   `-- README.md
+|-- src/
+|   `-- README.md
+`-- tests/
+    |-- README.md
+    `-- validate_manifests.py
 ```
 
 ## Directory Roles
 
 - `docs/`: canonical project design, roadmap, repo conventions, and future design notes.
-- `data/manifests/`: small, tracked CSV inputs for source metadata, validation target selection, references, and reproducibility manifests.
+- `data/manifests/`: small, tracked CSV inputs for source metadata, observation curation, validation target selection, references, and reproducibility manifests.
 - `data/`: local data area. Large raw, processed, and derived mission products must stay out of Git unless a future task explicitly adds a tiny test fixture.
 - `src/`: future Python package code. No pipeline code belongs here until the Phase 0 foundation and environment decisions are complete.
-- `tests/`: future automated tests and small synthetic fixtures. Tests should begin before Phase 1 ingestion expands beyond the first RXTE validation target.
+- `tests/`: automated checks and future small synthetic fixtures. The current Phase 0 check validates manifest schemas and curation rules.
 - `pipelines/`: future Snakemake, Nextflow, or script entrypoints for reproducible execution.
 - `notebooks/`: exploratory notebooks and review notebooks. Notebooks are never the source of truth for catalog products or scientific claims.
 
 ## Phase Boundaries
 
-- Phase 0 may add structure, manifests, documentation, citation policy, environment decisions, and validation target curation.
+- Phase 0 may add structure, manifests, documentation, citation policy, environment decisions, validation checks, and validation target curation.
 - Phase 1 may add RXTE ingestion, burst detection, targeted oscillation search, candidate scoring, control intervals, and catalog writes.
 - Later-phase work must not appear in these directories until the roadmap phase is explicitly advanced.
 

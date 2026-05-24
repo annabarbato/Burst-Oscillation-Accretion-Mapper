@@ -19,4 +19,4 @@ Run the Phase 0 manifest validation check with:
 python tests/validate_manifests.py
 ```
 
-The check uses only the Python standard library and validates tracked CSV schemas, required fields, references, source IDs, RXTE-only validation scope, numeric coordinates, and expected oscillation frequencies.
+The check uses only the Python standard library and validates tracked CSV schemas, required fields, references, source IDs, observation rows, RXTE-only validation scope, numeric coordinates, and expected oscillation frequencies.

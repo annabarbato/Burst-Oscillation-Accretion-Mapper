@@ -1,8 +1,8 @@
 """Validate Phase 0 CSV manifests.
 
 This is intentionally a small standard-library check. It protects the source,
-validation-target, and reference manifests before the project has a full Python
-package or test runner.
+observation, validation-target, and reference manifests before the project has a
+full Python package or test runner.
 """
 
 from __future__ import annotations
@@ -47,6 +47,29 @@ VALIDATION_TARGET_COLUMNS = [
     "notes",
 ]
 
+OBSERVATION_COLUMNS = [
+    "observation_id",
+    "source_id",
+    "instrument",
+    "obs_id",
+    "archive_uri",
+    "archive_ref",
+    "start_time",
+    "stop_time",
+    "exposure_s",
+    "data_mode",
+    "raw_status",
+    "local_raw_path",
+    "checksum",
+    "event_product_uri",
+    "software_version",
+    "caldb_version",
+    "screening_hash",
+    "barycorr_ref",
+    "quality_flags",
+    "notes",
+]
+
 REFERENCE_COLUMNS = [
     "ref_id",
     "category",
@@ -86,6 +109,7 @@ EXPECTED_SIGNALS = {
 }
 
 PRIORITIES = {"high", "medium", "low"}
+RAW_STATUSES = {"candidate", "selected", "downloaded", "verified", "rejected"}
 ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 URL_PATTERN = re.compile(r"^https?://")
@@ -208,7 +232,56 @@ def validate_sources(ref_ids: set[str]) -> set[str]:
     return source_ids
 
 
-def validate_targets(source_ids: set[str], ref_ids: set[str]) -> None:
+def validate_observations(source_ids: set[str], ref_ids: set[str]) -> set[str]:
+    rows = read_csv(MANIFEST_DIR / "observations.csv", OBSERVATION_COLUMNS)
+    check_unique(rows, "observation_id", "observations.csv")
+
+    obs_ids: set[str] = set()
+    for row in rows:
+        observation_id = require(row, "observation_id", "observations.csv")
+        require_id(observation_id, observation_id, "observation_id")
+
+        source_id = require(row, "source_id", observation_id)
+        if source_id not in source_ids:
+            raise ManifestError(
+                f"{observation_id} references unknown source_id: {source_id}"
+            )
+
+        instrument = require(row, "instrument", observation_id)
+        if instrument != "RXTE/PCA":
+            raise ManifestError(
+                f"{observation_id} is not Phase 0/1 RXTE/PCA: {instrument}"
+            )
+
+        obs_id = require(row, "obs_id", observation_id)
+        if obs_id in obs_ids:
+            raise ManifestError(f"observations.csv has duplicate obs_id: {obs_id}")
+        obs_ids.add(obs_id)
+
+        archive_ref = row.get("archive_ref", "").strip()
+        if archive_ref:
+            require_url_or_ref(archive_ref, observation_id, "archive_ref", ref_ids)
+
+        archive_uri = row.get("archive_uri", "").strip()
+        if archive_uri and not URL_PATTERN.match(archive_uri):
+            raise ManifestError(
+                f"{observation_id} has invalid archive_uri: {archive_uri}"
+            )
+
+        exposure = row.get("exposure_s", "").strip()
+        if exposure and parse_float(exposure, observation_id, "exposure_s") < 0:
+            raise ManifestError(f"{observation_id} exposure_s cannot be negative")
+
+        raw_status = row.get("raw_status", "").strip()
+        if raw_status and raw_status not in RAW_STATUSES:
+            raise ManifestError(f"{observation_id} has invalid raw_status: {raw_status}")
+
+    return obs_ids
+
+
+def validate_targets(
+    source_ids: set[str], ref_ids: set[str], observation_obs_ids: set[str]
+) -> None:
     rows = read_csv(MANIFEST_DIR / "validation_targets.csv", VALIDATION_TARGET_COLUMNS)
     check_unique(rows, "target_id", "validation_targets.csv")
 
@@ -223,6 +296,12 @@ def validate_targets(source_ids: set[str], ref_ids: set[str]) -> None:
         instrument = require(row, "instrument", target_id)
         if instrument != "RXTE/PCA":
             raise ManifestError(f"{target_id} is not Phase 1 RXTE/PCA: {instrument}")
+
+        obs_id = row.get("obs_id", "").strip()
+        if obs_id and obs_id not in observation_obs_ids:
+            raise ManifestError(
+                f"{target_id} references obs_id without observations.csv row: {obs_id}"
+            )
 
         goal = require(row, "validation_goal", target_id)
         if goal not in VALIDATION_GOALS:
@@ -253,7 +332,8 @@ def main() -> int:
     try:
         ref_ids = validate_references()
         source_ids = validate_sources(ref_ids)
-        validate_targets(source_ids, ref_ids)
+        observation_obs_ids = validate_observations(source_ids, ref_ids)
+        validate_targets(source_ids, ref_ids, observation_obs_ids)
     except ManifestError as exc:
         print(f"Manifest validation failed: {exc}", file=sys.stderr)
         return 1
