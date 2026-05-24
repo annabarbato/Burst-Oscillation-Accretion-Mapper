@@ -3,23 +3,32 @@ import sqlite3
 
 import pytest
 
+from burst_oscillation_accretion_mapper.burst_detection import (
+    MultiCadenceBurstCandidateSummary,
+)
 from burst_oscillation_accretion_mapper.candidate_scoring import (
     NON_DETECTION,
     PROBABLE_DETECTION,
     OscillationCandidateReview,
 )
 from burst_oscillation_accretion_mapper.catalog_writer import (
+    BURST_REVIEW_TABLE,
     CONTROL_REVIEW_TABLE,
     OSCILLATION_CANDIDATE_TABLE,
+    BurstCatalogWriteContext,
     ControlCatalogWriteContext,
     CandidateCatalogWriteContext,
     CatalogWriteError,
+    burst_catalog_row_from_summary,
     candidate_catalog_row_from_review,
     control_catalog_row_from_review,
+    initialize_burst_catalog,
     initialize_candidate_catalog,
     initialize_control_catalog,
+    read_burst_catalog_rows,
     read_candidate_catalog_rows,
     read_control_catalog_rows,
+    write_burst_review,
     write_candidate_review,
     write_control_review,
     write_control_search_run,
@@ -34,6 +43,91 @@ from burst_oscillation_accretion_mapper.control_intervals import (
     summarize_control_reviews,
 )
 from burst_oscillation_accretion_mapper.time_intervals import TimeInterval
+
+
+def test_burst_catalog_row_from_summary_preserves_required_fields() -> None:
+    summary = _burst_summary()
+    context = BurstCatalogWriteContext(
+        burst_id="burst-001",
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        pipeline_version="phase1-test",
+        detection_config_id="multi-cadence-default",
+        minbar_burst_id="MINBAR.2257",
+        provenance_note="synthetic fixture",
+    )
+
+    row = burst_catalog_row_from_summary(summary, context=context)
+
+    assert row.burst_id == "burst-001"
+    assert row.source_id == "source"
+    assert row.obs_id == "obs"
+    assert row.instrument == "RXTE/PCA"
+    assert row.t_start == 10.0
+    assert row.t_peak == 12.0
+    assert row.t_end == 20.0
+    assert row.duration == 10.0
+    assert row.bin_sizes == (0.25, 1.0)
+    assert row.best_bin_size == 0.25
+    assert row.review_count == 2
+    assert row.passed_review_count == 1
+    assert row.passes_review
+    assert row.best_peak_score == 7.5
+    assert row.best_excess_counts == 42.0
+    assert row.total_counts == 100
+    assert row.total_expected_counts == 58.0
+    assert row.rejection_reasons == ("peak_score_below_threshold",)
+    assert row.minbar_burst_id == "MINBAR.2257"
+    assert row.pipeline_version == "phase1-test"
+    assert row.detection_config_id == "multi-cadence-default"
+    assert row.provenance_note == "synthetic fixture"
+
+
+def test_write_burst_review_round_trips_rows() -> None:
+    connection = sqlite3.connect(":memory:")
+    written = write_burst_review(
+        connection,
+        _burst_summary(),
+        context=BurstCatalogWriteContext(
+            burst_id="burst-001",
+            source_id="source",
+            obs_id="obs",
+            instrument="RXTE/PCA",
+            pipeline_version="phase1-test",
+            detection_config_id="multi-cadence-default",
+            minbar_burst_id="MINBAR.2257",
+        ),
+    )
+
+    rows = read_burst_catalog_rows(connection)
+
+    assert rows == (written,)
+    assert rows[0].passes_review is True
+    assert rows[0].bin_sizes == (0.25, 1.0)
+    assert rows[0].rejection_reasons == ("peak_score_below_threshold",)
+
+
+def test_initialize_burst_catalog_creates_expected_table() -> None:
+    connection = sqlite3.connect(":memory:")
+
+    initialize_burst_catalog(connection)
+
+    table_names = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        )
+    }
+    assert BURST_REVIEW_TABLE in table_names
+
+    columns = {
+        row[1] for row in connection.execute(f"PRAGMA table_info({BURST_REVIEW_TABLE})")
+    }
+    assert "burst_id" in columns
+    assert "bin_sizes_json" in columns
+    assert "detection_config_id" in columns
+    assert "minbar_burst_id" in columns
 
 
 def test_candidate_catalog_row_from_review_preserves_required_fields() -> None:
@@ -263,7 +357,27 @@ def test_write_control_review_rejects_duplicate_control_id() -> None:
         write_control_review(connection, control_review, context=context)
 
 
-def test_candidate_catalog_write_context_requires_identity() -> None:
+def test_catalog_write_contexts_require_identity() -> None:
+    with pytest.raises(CatalogWriteError, match="burst_id"):
+        BurstCatalogWriteContext(
+            burst_id="",
+            source_id="source",
+            obs_id="obs",
+            instrument="RXTE/PCA",
+            pipeline_version="phase1-test",
+            detection_config_id="multi-cadence-default",
+        )
+
+    with pytest.raises(CatalogWriteError, match="detection_config_id"):
+        BurstCatalogWriteContext(
+            burst_id="burst",
+            source_id="source",
+            obs_id="obs",
+            instrument="RXTE/PCA",
+            pipeline_version="phase1-test",
+            detection_config_id="",
+        )
+
     with pytest.raises(CatalogWriteError, match="candidate_id"):
         CandidateCatalogWriteContext(candidate_id="", pipeline_version="phase1-test")
 
@@ -281,6 +395,37 @@ def test_candidate_catalog_write_context_requires_identity() -> None:
 
     with pytest.raises(CatalogWriteError, match="search_config_id"):
         ControlCatalogWriteContext(pipeline_version="phase1-test")
+
+
+def test_burst_catalog_row_from_summary_validates_counts() -> None:
+    summary = MultiCadenceBurstCandidateSummary(
+        start=10.0,
+        peak_time=12.0,
+        stop=20.0,
+        duration=10.0,
+        bin_sizes=(1.0,),
+        best_bin_size=1.0,
+        review_count=1,
+        passed_review_count=2,
+        best_peak_score=7.5,
+        best_excess_counts=42.0,
+        total_counts=100,
+        total_expected_counts=58.0,
+        rejection_reasons=(),
+    )
+
+    with pytest.raises(CatalogWriteError, match="passed_review_count"):
+        burst_catalog_row_from_summary(
+            summary,
+            context=BurstCatalogWriteContext(
+                burst_id="burst",
+                source_id="source",
+                obs_id="obs",
+                instrument="RXTE/PCA",
+                pipeline_version="phase1-test",
+                detection_config_id="multi-cadence-default",
+            ),
+        )
 
 
 def test_candidate_catalog_row_from_review_validates_numeric_fields() -> None:
@@ -387,6 +532,24 @@ def _non_detection_review() -> OscillationCandidateReview:
         fractional_rms=None,
         phase_rad=None,
         reasons=("no_searched_windows",),
+    )
+
+
+def _burst_summary() -> MultiCadenceBurstCandidateSummary:
+    return MultiCadenceBurstCandidateSummary(
+        start=10.0,
+        peak_time=12.0,
+        stop=20.0,
+        duration=10.0,
+        bin_sizes=(0.25, 1.0),
+        best_bin_size=0.25,
+        review_count=2,
+        passed_review_count=1,
+        best_peak_score=7.5,
+        best_excess_counts=42.0,
+        total_counts=100,
+        total_expected_counts=58.0,
+        rejection_reasons=("peak_score_below_threshold",),
     )
 
 

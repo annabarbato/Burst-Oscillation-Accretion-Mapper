@@ -1,9 +1,9 @@
 """SQLite development catalog writer for Phase 1 candidate reviews.
 
 This is a small Phase 1 persistence layer for review products. It writes the
-candidate/non-detection rows needed for local validation, while leaving schema
-migrations, PostgreSQL support, sensitivity products, and population tables for
-later roadmap work.
+burst, candidate, control, and non-detection rows needed for local validation,
+while leaving schema migrations, PostgreSQL support, sensitivity products, and
+population tables for later roadmap work.
 """
 
 from __future__ import annotations
@@ -13,18 +13,42 @@ import sqlite3
 from dataclasses import dataclass
 from math import isfinite
 
+from .burst_detection import MultiCadenceBurstCandidateSummary
 from .candidate_scoring import OscillationCandidateReview
 from .control_checks import ControlSearchRun
 from .control_intervals import ControlReview
 from .timing_significance import z2_trial_significance
 
 
+BURST_REVIEW_TABLE = "burst_reviews"
 OSCILLATION_CANDIDATE_TABLE = "oscillation_candidate_reviews"
 CONTROL_REVIEW_TABLE = "control_reviews"
 
 
 class CatalogWriteError(ValueError):
     """Raised when catalog rows or write contexts are invalid."""
+
+
+@dataclass(frozen=True)
+class BurstCatalogWriteContext:
+    """Write-time metadata required for burst-review catalog rows."""
+
+    burst_id: str
+    source_id: str
+    obs_id: str
+    instrument: str
+    pipeline_version: str
+    detection_config_id: str
+    minbar_burst_id: str = ""
+    provenance_note: str = ""
+
+    def __post_init__(self) -> None:
+        _require_text(self.burst_id, "burst_id")
+        _require_text(self.source_id, "source_id")
+        _require_text(self.obs_id, "obs_id")
+        _require_text(self.instrument, "instrument")
+        _require_text(self.pipeline_version, "pipeline_version")
+        _require_text(self.detection_config_id, "detection_config_id")
 
 
 @dataclass(frozen=True)
@@ -56,6 +80,34 @@ class ControlCatalogWriteContext:
     def __post_init__(self) -> None:
         _require_text(self.pipeline_version, "pipeline_version")
         _require_text(self.search_config_id, "search_config_id")
+
+
+@dataclass(frozen=True)
+class BurstCatalogRow:
+    """Serializable burst detector summary row for Phase 1 SQLite output."""
+
+    burst_id: str
+    source_id: str
+    obs_id: str
+    instrument: str
+    t_start: float
+    t_peak: float
+    t_end: float
+    duration: float
+    bin_sizes: tuple[float, ...]
+    best_bin_size: float
+    review_count: int
+    passed_review_count: int
+    passes_review: bool
+    best_peak_score: float
+    best_excess_counts: float
+    total_counts: int
+    total_expected_counts: float
+    rejection_reasons: tuple[str, ...]
+    minbar_burst_id: str
+    pipeline_version: str
+    detection_config_id: str
+    provenance_note: str
 
 
 @dataclass(frozen=True)
@@ -125,6 +177,40 @@ class ControlCatalogRow:
     pipeline_version: str
     search_config_id: str
     provenance_note: str
+
+
+def burst_catalog_row_from_summary(
+    summary: MultiCadenceBurstCandidateSummary,
+    *,
+    context: BurstCatalogWriteContext,
+) -> BurstCatalogRow:
+    """Create a catalog row from one multi-cadence burst detector summary."""
+
+    _validate_burst_summary(summary)
+    return BurstCatalogRow(
+        burst_id=context.burst_id,
+        source_id=context.source_id,
+        obs_id=context.obs_id,
+        instrument=context.instrument,
+        t_start=summary.start,
+        t_peak=summary.peak_time,
+        t_end=summary.stop,
+        duration=summary.duration,
+        bin_sizes=summary.bin_sizes,
+        best_bin_size=summary.best_bin_size,
+        review_count=summary.review_count,
+        passed_review_count=summary.passed_review_count,
+        passes_review=summary.passes_any_review,
+        best_peak_score=summary.best_peak_score,
+        best_excess_counts=summary.best_excess_counts,
+        total_counts=summary.total_counts,
+        total_expected_counts=summary.total_expected_counts,
+        rejection_reasons=summary.rejection_reasons,
+        minbar_burst_id=context.minbar_burst_id,
+        pipeline_version=context.pipeline_version,
+        detection_config_id=context.detection_config_id,
+        provenance_note=context.provenance_note,
+    )
 
 
 def candidate_catalog_row_from_review(
@@ -216,6 +302,40 @@ def control_catalog_row_from_review(
     )
 
 
+def initialize_burst_catalog(connection: sqlite3.Connection) -> None:
+    """Create the Phase 1 burst-review table when it does not exist."""
+
+    connection.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {BURST_REVIEW_TABLE} (
+            burst_id TEXT PRIMARY KEY,
+            source_id TEXT NOT NULL,
+            obs_id TEXT NOT NULL,
+            instrument TEXT NOT NULL,
+            t_start REAL NOT NULL,
+            t_peak REAL NOT NULL,
+            t_end REAL NOT NULL,
+            duration REAL NOT NULL,
+            bin_sizes_json TEXT NOT NULL,
+            best_bin_size REAL NOT NULL,
+            review_count INTEGER NOT NULL,
+            passed_review_count INTEGER NOT NULL,
+            passes_review INTEGER NOT NULL,
+            best_peak_score REAL NOT NULL,
+            best_excess_counts REAL NOT NULL,
+            total_counts INTEGER NOT NULL,
+            total_expected_counts REAL NOT NULL,
+            rejection_reasons_json TEXT NOT NULL,
+            minbar_burst_id TEXT NOT NULL,
+            pipeline_version TEXT NOT NULL,
+            detection_config_id TEXT NOT NULL,
+            provenance_note TEXT NOT NULL
+        )
+        """
+    )
+    connection.commit()
+
+
 def initialize_candidate_catalog(connection: sqlite3.Connection) -> None:
     """Create the Phase 1 candidate-review table when it does not exist."""
 
@@ -293,6 +413,45 @@ def initialize_control_catalog(connection: sqlite3.Connection) -> None:
             provenance_note TEXT NOT NULL
         )
         """
+    )
+    connection.commit()
+
+
+def write_burst_catalog_row(
+    connection: sqlite3.Connection,
+    row: BurstCatalogRow,
+) -> None:
+    """Insert one burst-review row into the SQLite development catalog."""
+
+    initialize_burst_catalog(connection)
+    connection.execute(
+        f"""
+        INSERT INTO {BURST_REVIEW_TABLE} (
+            burst_id,
+            source_id,
+            obs_id,
+            instrument,
+            t_start,
+            t_peak,
+            t_end,
+            duration,
+            bin_sizes_json,
+            best_bin_size,
+            review_count,
+            passed_review_count,
+            passes_review,
+            best_peak_score,
+            best_excess_counts,
+            total_counts,
+            total_expected_counts,
+            rejection_reasons_json,
+            minbar_burst_id,
+            pipeline_version,
+            detection_config_id,
+            provenance_note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        _burst_row_to_sql_values(row),
     )
     connection.commit()
 
@@ -388,6 +547,19 @@ def write_control_catalog_row(
     connection.commit()
 
 
+def write_burst_review(
+    connection: sqlite3.Connection,
+    summary: MultiCadenceBurstCandidateSummary,
+    *,
+    context: BurstCatalogWriteContext,
+) -> BurstCatalogRow:
+    """Create and insert one burst-review catalog row."""
+
+    row = burst_catalog_row_from_summary(summary, context=context)
+    write_burst_catalog_row(connection, row)
+    return row
+
+
 def write_candidate_review(
     connection: sqlite3.Connection,
     review: OscillationCandidateReview,
@@ -426,6 +598,44 @@ def write_control_search_run(
         write_control_review(connection, control_review, context=context)
         for control_review in run.control_reviews
     )
+
+
+def read_burst_catalog_rows(
+    connection: sqlite3.Connection,
+) -> tuple[BurstCatalogRow, ...]:
+    """Read Phase 1 burst-review rows from the SQLite development catalog."""
+
+    initialize_burst_catalog(connection)
+    cursor = connection.execute(
+        f"""
+        SELECT
+            burst_id,
+            source_id,
+            obs_id,
+            instrument,
+            t_start,
+            t_peak,
+            t_end,
+            duration,
+            bin_sizes_json,
+            best_bin_size,
+            review_count,
+            passed_review_count,
+            passes_review,
+            best_peak_score,
+            best_excess_counts,
+            total_counts,
+            total_expected_counts,
+            rejection_reasons_json,
+            minbar_burst_id,
+            pipeline_version,
+            detection_config_id,
+            provenance_note
+        FROM {BURST_REVIEW_TABLE}
+        ORDER BY burst_id
+        """
+    )
+    return tuple(_burst_row_from_sql_values(row) for row in cursor.fetchall())
 
 
 def read_candidate_catalog_rows(
@@ -517,6 +727,33 @@ def read_control_catalog_rows(
     return tuple(_control_row_from_sql_values(row) for row in cursor.fetchall())
 
 
+def _burst_row_to_sql_values(row: BurstCatalogRow) -> tuple[object, ...]:
+    return (
+        row.burst_id,
+        row.source_id,
+        row.obs_id,
+        row.instrument,
+        row.t_start,
+        row.t_peak,
+        row.t_end,
+        row.duration,
+        json.dumps(list(row.bin_sizes), sort_keys=True),
+        row.best_bin_size,
+        row.review_count,
+        row.passed_review_count,
+        1 if row.passes_review else 0,
+        row.best_peak_score,
+        row.best_excess_counts,
+        row.total_counts,
+        row.total_expected_counts,
+        json.dumps(list(row.rejection_reasons), sort_keys=True),
+        row.minbar_burst_id,
+        row.pipeline_version,
+        row.detection_config_id,
+        row.provenance_note,
+    )
+
+
 def _row_to_sql_values(row: CandidateCatalogRow) -> tuple[object, ...]:
     return (
         row.candidate_id,
@@ -581,6 +818,36 @@ def _control_row_to_sql_values(row: ControlCatalogRow) -> tuple[object, ...]:
         row.pipeline_version,
         row.search_config_id,
         row.provenance_note,
+    )
+
+
+def _burst_row_from_sql_values(
+    values: sqlite3.Row | tuple[object, ...],
+) -> BurstCatalogRow:
+    row = tuple(values)
+    return BurstCatalogRow(
+        burst_id=str(row[0]),
+        source_id=str(row[1]),
+        obs_id=str(row[2]),
+        instrument=str(row[3]),
+        t_start=float(row[4]),
+        t_peak=float(row[5]),
+        t_end=float(row[6]),
+        duration=float(row[7]),
+        bin_sizes=tuple(float(value) for value in json.loads(str(row[8]))),
+        best_bin_size=float(row[9]),
+        review_count=int(row[10]),
+        passed_review_count=int(row[11]),
+        passes_review=bool(row[12]),
+        best_peak_score=float(row[13]),
+        best_excess_counts=float(row[14]),
+        total_counts=int(row[15]),
+        total_expected_counts=float(row[16]),
+        rejection_reasons=tuple(json.loads(str(row[17]))),
+        minbar_burst_id=str(row[18]),
+        pipeline_version=str(row[19]),
+        detection_config_id=str(row[20]),
+        provenance_note=str(row[21]),
     )
 
 
@@ -655,6 +922,39 @@ def _control_row_from_sql_values(
     )
 
 
+def _validate_burst_summary(summary: MultiCadenceBurstCandidateSummary) -> None:
+    for field_name, value in (
+        ("t_start", summary.start),
+        ("t_peak", summary.peak_time),
+        ("t_end", summary.stop),
+    ):
+        _require_finite(value, field_name)
+    if summary.start > summary.peak_time or summary.peak_time > summary.stop:
+        raise CatalogWriteError("burst times must satisfy start <= peak <= stop")
+    if summary.stop <= summary.start:
+        raise CatalogWriteError("burst stop must be greater than start")
+    for field_name, value in (
+        ("duration", summary.duration),
+        ("best_bin_size", summary.best_bin_size),
+        ("best_peak_score", summary.best_peak_score),
+        ("best_excess_counts", summary.best_excess_counts),
+        ("total_expected_counts", summary.total_expected_counts),
+    ):
+        _require_finite_non_negative(value, field_name)
+    for field_name, value in (
+        ("review_count", summary.review_count),
+        ("passed_review_count", summary.passed_review_count),
+        ("total_counts", summary.total_counts),
+    ):
+        _require_non_negative_int(value, field_name)
+    if summary.passed_review_count > summary.review_count:
+        raise CatalogWriteError("passed_review_count cannot exceed review_count")
+    if not summary.bin_sizes:
+        raise CatalogWriteError("bin_sizes is required")
+    for bin_size in summary.bin_sizes:
+        _require_finite_non_negative(bin_size, "bin_size")
+
+
 def _validate_review(review: OscillationCandidateReview) -> None:
     for field_name, value in (
         ("source_id", review.source_id),
@@ -714,6 +1014,21 @@ def _require_text(value: str, field: str) -> None:
 def _require_optional_finite(value: float | None, field: str) -> None:
     if value is not None and not isfinite(value):
         raise CatalogWriteError(f"{field} must be finite when set")
+
+
+def _require_finite(value: float, field: str) -> None:
+    if not isfinite(value):
+        raise CatalogWriteError(f"{field} must be finite")
+
+
+def _require_finite_non_negative(value: float, field: str) -> None:
+    if not isfinite(value) or value < 0:
+        raise CatalogWriteError(f"{field} must be finite and non-negative")
+
+
+def _require_non_negative_int(value: int, field: str) -> None:
+    if not isinstance(value, int) or value < 0:
+        raise CatalogWriteError(f"{field} must be a non-negative integer")
 
 
 def _optional_float(value: object) -> float | None:
