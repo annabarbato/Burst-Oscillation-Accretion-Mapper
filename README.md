@@ -56,4 +56,3 @@ The validator checks manifest schemas, source and observation references, RXTE/P
 
 Mission event files, calibrated products, FITS files, Parquet/HDF5 outputs, SQLite/PostgreSQL exports, plots, and other generated science products should not be committed. Track durable metadata and provenance in manifests, then keep raw and processed products under ignored local data paths.
 
-Local agent instruction files such as `AGENTS.md` are ignored and should remain machine-local.
