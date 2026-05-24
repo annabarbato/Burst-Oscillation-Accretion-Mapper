@@ -18,8 +18,10 @@ This document records the Phase 0 repository structure proposal from `docs/roadm
 │       └── validation_targets.csv
 ├── docs/
 │   ├── architecture.md
+│   ├── environment.md
 │   ├── repository-structure.md
-│   └── roadmap.md
+│   ├── roadmap.md
+│   └── source-citation-policy.md
 ├── notebooks/
 │   └── README.md
 ├── pipelines/
@@ -51,4 +53,3 @@ This document records the Phase 0 repository structure proposal from `docs/roadm
 - Do not commit downloaded HEASARC data, mission event files, processed event tables, generated spectra, generated light curves, database files, or dashboard artifacts.
 - Commit only small manifests, schemas, synthetic fixtures, documentation, and code.
 - Every future data-producing command must record enough provenance to connect outputs back to source manifests, raw products, software versions, screening settings, and search configuration.
-
