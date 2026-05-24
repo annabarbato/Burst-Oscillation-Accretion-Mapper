@@ -29,6 +29,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
 - `burst_oscillation_accretion_mapper.rxte_config`: RXTE/PCA detector-selection and barycenter provenance configuration.
 - `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks before FITS parsing exists.
+- `burst_oscillation_accretion_mapper.timing_significance`: single-trial and nominal independent-trial corrected p-value helpers for Phase 1 `Z_n^2` products.
 - `burst_oscillation_accretion_mapper.time_intervals`: small GTI and event-window helpers for future event slicing.
 
 Do not add NICER backend code, injection/recovery code, inference models, or dashboard code before the roadmap phase is explicitly advanced.
