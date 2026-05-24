@@ -20,7 +20,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.external_tools`: read-only HEASoft/CALDB environment snapshots.
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
-- `burst_oscillation_accretion_mapper.minbar_matching`: timing-window matching between MINBAR validation targets and detector summary products.
+- `burst_oscillation_accretion_mapper.minbar_matching`: timing-window matching, deterministic detected-window construction, and recall/review-burden metrics for MINBAR validation targets.
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
 - `burst_oscillation_accretion_mapper.rxte_config`: RXTE/PCA detector-selection and barycenter provenance configuration.
 - `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks before FITS parsing exists.

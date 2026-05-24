@@ -11,7 +11,7 @@ Expected early test areas:
 - RXTE/PCA detector-selection and barycenter provenance configuration.
 - RXTE/PCA ingestion preflight behavior before FITS parsing.
 - Manifest parsing and validation.
-- MINBAR timing-window matching against detector summary products.
+- MINBAR timing-window matching and validation metrics against detector summary products.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - GTI-corrected single- and multi-cadence light-curve binning plus baseline estimation on synthetic events.
 - In-memory event product slicing on synthetic events.

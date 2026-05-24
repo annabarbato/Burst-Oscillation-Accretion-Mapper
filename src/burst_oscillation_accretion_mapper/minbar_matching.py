@@ -118,6 +118,25 @@ class BurstTimingMatchReport:
     def unmatched_detection_count(self) -> int:
         return len(self.unmatched_detections)
 
+    @property
+    def metrics(self) -> BurstTimingValidationMetrics:
+        return summarize_timing_match_report(self)
+
+
+@dataclass(frozen=True)
+class BurstTimingValidationMetrics:
+    """Compact validation metrics for MINBAR timing matching."""
+
+    expected_count: int
+    matched_count: int
+    missing_count: int
+    unmatched_detection_count: int
+    detected_window_count: int
+    recall_fraction: float | None
+    unmatched_detection_fraction: float | None
+    max_abs_delta_s: float | None
+    mean_abs_peak_delta_s: float | None
+
 
 def match_detected_bursts_to_minbar(
     expected_windows: tuple[MinbarBurstWindow, ...],
@@ -180,6 +199,72 @@ def match_detected_bursts_to_minbar(
         if detection_index not in used_detection_indexes
     )
     return BurstTimingMatchReport(matches=tuple(matches), unmatched_detections=unmatched)
+
+
+def detected_windows_from_summaries(
+    *,
+    source_id: str,
+    obs_id: str,
+    summaries: tuple[MultiCadenceBurstCandidateSummary, ...],
+    candidate_id_prefix: str,
+    start_index: int = 1,
+) -> tuple[DetectedBurstWindow, ...]:
+    """Create deterministic detected windows from ordered detector summaries."""
+
+    _require_identity(candidate_id_prefix, "candidate_id_prefix")
+    if start_index < 0:
+        raise MinbarMatchingError("start_index cannot be negative")
+
+    return tuple(
+        DetectedBurstWindow.from_summary(
+            source_id=source_id,
+            obs_id=obs_id,
+            candidate_id=f"{candidate_id_prefix}-{index:04d}",
+            summary=summary,
+        )
+        for index, summary in enumerate(summaries, start=start_index)
+    )
+
+
+def summarize_timing_match_report(
+    report: BurstTimingMatchReport,
+) -> BurstTimingValidationMetrics:
+    """Summarize recall and review burden for one timing-match report."""
+
+    expected_count = len(report.matches)
+    detected_window_count = report.matched_count + report.unmatched_detection_count
+    matched_peak_deltas = tuple(
+        abs(match.peak_delta_s)
+        for match in report.matches
+        if match.is_match and match.peak_delta_s is not None
+    )
+    max_abs_delta_values = tuple(
+        match.max_abs_delta_s
+        for match in report.matches
+        if match.is_match and match.max_abs_delta_s is not None
+    )
+
+    return BurstTimingValidationMetrics(
+        expected_count=expected_count,
+        matched_count=report.matched_count,
+        missing_count=report.missing_count,
+        unmatched_detection_count=report.unmatched_detection_count,
+        detected_window_count=detected_window_count,
+        recall_fraction=(
+            report.matched_count / expected_count if expected_count > 0 else None
+        ),
+        unmatched_detection_fraction=(
+            report.unmatched_detection_count / detected_window_count
+            if detected_window_count > 0
+            else None
+        ),
+        max_abs_delta_s=max(max_abs_delta_values) if max_abs_delta_values else None,
+        mean_abs_peak_delta_s=(
+            sum(matched_peak_deltas) / len(matched_peak_deltas)
+            if matched_peak_deltas
+            else None
+        ),
+    )
 
 
 @dataclass(frozen=True)

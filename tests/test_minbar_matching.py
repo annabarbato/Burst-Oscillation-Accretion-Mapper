@@ -9,7 +9,9 @@ from burst_oscillation_accretion_mapper.minbar_matching import (
     DetectedBurstWindow,
     MinbarBurstWindow,
     MinbarMatchingError,
+    detected_windows_from_summaries,
     match_detected_bursts_to_minbar,
+    summarize_timing_match_report,
 )
 
 
@@ -30,6 +32,27 @@ def test_detected_window_from_summary_preserves_identity_and_review_state() -> N
     assert detected.peak == 12.0
     assert detected.stop == 20.0
     assert detected.passes_review
+
+
+def test_detected_windows_from_summaries_assigns_stable_ids() -> None:
+    summaries = (
+        _summary(start=10.0, peak=12.0, stop=20.0, passed=True),
+        _summary(start=30.0, peak=31.0, stop=40.0, passed=False),
+    )
+
+    windows = detected_windows_from_summaries(
+        source_id="4u_1636_536",
+        obs_id="10088-01-07-02",
+        summaries=summaries,
+        candidate_id_prefix="rxte-10088-review",
+        start_index=3,
+    )
+
+    assert [window.candidate_id for window in windows] == [
+        "rxte-10088-review-0003",
+        "rxte-10088-review-0004",
+    ]
+    assert [window.passes_review for window in windows] == [True, False]
 
 
 def test_match_detected_bursts_to_minbar_matches_nearest_within_tolerance() -> None:
@@ -67,6 +90,49 @@ def test_match_detected_bursts_to_minbar_matches_nearest_within_tolerance() -> N
     assert match.stop_delta_s == pytest.approx(0.2)
     assert match.max_abs_delta_s == pytest.approx(0.2)
     assert match.overlap_fraction == pytest.approx(1.0)
+
+
+def test_summarize_timing_match_report_reports_recall_and_review_burden() -> None:
+    expected = (
+        MinbarBurstWindow(
+            source_id="4u_1636_536",
+            obs_id="10088-01-07-02",
+            minbar_burst_id="MINBAR.2257",
+            start=10.0,
+            peak=12.0,
+            stop=20.0,
+        ),
+        MinbarBurstWindow(
+            source_id="4u_1636_536",
+            obs_id="10088-01-07-02",
+            minbar_burst_id="MINBAR.2258",
+            start=30.0,
+            peak=32.0,
+            stop=40.0,
+        ),
+    )
+    detections = (
+        _detected(candidate_id="matched", start=9.8, peak=12.1, stop=20.2),
+        _detected(candidate_id="extra", start=50.0, peak=51.0, stop=60.0),
+    )
+    report = match_detected_bursts_to_minbar(
+        expected,
+        detections,
+        tolerance_s=0.5,
+    )
+
+    metrics = summarize_timing_match_report(report)
+
+    assert metrics == report.metrics
+    assert metrics.expected_count == 2
+    assert metrics.matched_count == 1
+    assert metrics.missing_count == 1
+    assert metrics.unmatched_detection_count == 1
+    assert metrics.detected_window_count == 2
+    assert metrics.recall_fraction == pytest.approx(0.5)
+    assert metrics.unmatched_detection_fraction == pytest.approx(0.5)
+    assert metrics.max_abs_delta_s == pytest.approx(0.2)
+    assert metrics.mean_abs_peak_delta_s == pytest.approx(0.1)
 
 
 def test_match_detected_bursts_to_minbar_reports_missing_outside_tolerance() -> None:
@@ -237,6 +303,15 @@ def test_minbar_matching_validates_windows_and_tolerance() -> None:
 
     with pytest.raises(MinbarMatchingError, match="Invalid tolerance"):
         match_detected_bursts_to_minbar((), (), tolerance_s=-1.0)
+
+    with pytest.raises(MinbarMatchingError, match="start_index"):
+        detected_windows_from_summaries(
+            source_id="source",
+            obs_id="obs",
+            summaries=(),
+            candidate_id_prefix="candidate",
+            start_index=-1,
+        )
 
 
 def _detected(
