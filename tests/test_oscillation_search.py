@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from burst_oscillation_accretion_mapper.event_products import EventProduct
@@ -7,6 +9,8 @@ from burst_oscillation_accretion_mapper.oscillation_search import (
     SlidingWindowConfig,
     TargetedFrequencyGrid,
     TargetedZ2SearchConfig,
+    first_harmonic_fractional_rms,
+    first_harmonic_phase,
     make_sliding_windows,
     search_event_product_sliding_targeted_z2,
     search_event_product_targeted_z2,
@@ -29,6 +33,20 @@ def test_z_n_squared_includes_requested_harmonics() -> None:
     power = z_n_squared(times, frequency_hz=10.0, n_harmonics=2)
 
     assert power == pytest.approx(40.0)
+
+
+def test_first_harmonic_phase_and_fractional_rms_track_rayleigh_vector() -> None:
+    times = tuple(0.025 + index * 0.1 for index in range(10))
+
+    phase = first_harmonic_phase(times, frequency_hz=10.0, reference_time=0.0)
+    rms = first_harmonic_fractional_rms(
+        times,
+        frequency_hz=10.0,
+        reference_time=0.0,
+    )
+
+    assert phase == pytest.approx(0.5 * math.pi)
+    assert rms == pytest.approx(math.sqrt(2.0))
 
 
 def test_z_n_squared_validates_inputs() -> None:
@@ -99,6 +117,12 @@ def test_search_event_product_targeted_z2_finds_best_frequency() -> None:
     )
     assert result.best_frequency_hz == 10.0
     assert result.best_z2_power == pytest.approx(20.0)
+    assert result.best_phase_rad == pytest.approx(0.0, abs=1e-12)
+    assert result.best_fractional_rms == pytest.approx(math.sqrt(2.0))
+    assert result.best_power.first_harmonic_phase_rad == pytest.approx(0.0, abs=1e-12)
+    assert result.best_power.first_harmonic_fractional_rms == pytest.approx(
+        math.sqrt(2.0)
+    )
 
 
 def test_search_event_product_targeted_z2_clips_to_requested_window() -> None:
@@ -238,6 +262,8 @@ def test_search_event_product_sliding_targeted_z2_reports_best_window() -> None:
     assert result.best_result.window == TimeInterval(0.0, 1.0)
     assert result.best_frequency_hz == 10.0
     assert result.best_z2_power == pytest.approx(20.0)
+    assert result.best_phase_rad == pytest.approx(0.0, abs=1e-12)
+    assert result.best_fractional_rms == pytest.approx(math.sqrt(2.0))
 
 
 def test_search_event_product_sliding_targeted_z2_skips_low_photon_windows() -> None:

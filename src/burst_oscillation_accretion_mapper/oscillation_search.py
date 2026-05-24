@@ -2,13 +2,14 @@
 
 This module implements a narrow `Z_n^2` search around known source frequencies
 for RXTE validation bursts. It is not a blind 500 Hz to 1 kHz scanner, does not
-assign candidate classes, and does not perform trials correction yet.
+assign candidate classes, and does not perform trials correction or background
+correction yet.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import cos, floor, isfinite, pi, sin
+from math import atan2, cos, floor, isfinite, pi, sin, sqrt
 
 from .event_products import EventProduct
 from .time_intervals import TimeInterval
@@ -82,12 +83,14 @@ class SlidingWindowConfig:
 
 @dataclass(frozen=True)
 class Z2FrequencyPower:
-    """`Z_n^2` power measured at one trial frequency."""
+    """`Z_n^2` power and first-harmonic pulse estimate for one frequency."""
 
     frequency_hz: float
     z2_power: float
     n_harmonics: int
     photon_count: int
+    first_harmonic_phase_rad: float
+    first_harmonic_fractional_rms: float
 
 
 @dataclass(frozen=True)
@@ -123,6 +126,14 @@ class TargetedZ2SearchResult:
     @property
     def best_z2_power(self) -> float:
         return self.best_power.z2_power
+
+    @property
+    def best_phase_rad(self) -> float:
+        return self.best_power.first_harmonic_phase_rad
+
+    @property
+    def best_fractional_rms(self) -> float:
+        return self.best_power.first_harmonic_fractional_rms
 
 
 @dataclass(frozen=True)
@@ -169,6 +180,14 @@ class SlidingTargetedZ2SearchResult:
     def best_z2_power(self) -> float:
         return self.best_result.best_z2_power
 
+    @property
+    def best_phase_rad(self) -> float:
+        return self.best_result.best_phase_rad
+
+    @property
+    def best_fractional_rms(self) -> float:
+        return self.best_result.best_fractional_rms
+
 
 def z_n_squared(
     times: tuple[float, ...],
@@ -187,15 +206,15 @@ def z_n_squared(
         raise OscillationSearchError("reference_time must be finite when set")
 
     time_zero = times[0] if reference_time is None else reference_time
-    power_sum = 0.0
-    for harmonic in range(1, n_harmonics + 1):
-        cosine_sum = 0.0
-        sine_sum = 0.0
-        for time in times:
-            phase = 2.0 * pi * harmonic * frequency_hz * (time - time_zero)
-            cosine_sum += cos(phase)
-            sine_sum += sin(phase)
-        power_sum += cosine_sum * cosine_sum + sine_sum * sine_sum
+    power_sum = sum(
+        cosine_sum * cosine_sum + sine_sum * sine_sum
+        for cosine_sum, sine_sum in _harmonic_sums(
+            times,
+            frequency_hz=frequency_hz,
+            n_harmonics=n_harmonics,
+            reference_time=time_zero,
+        )
+    )
 
     return 2.0 * power_sum / len(times)
 
@@ -244,6 +263,16 @@ def search_event_product_targeted_z2(
             ),
             n_harmonics=config.n_harmonics,
             photon_count=selected.n_events,
+            first_harmonic_phase_rad=first_harmonic_phase(
+                selected.times,
+                frequency_hz=frequency_hz,
+                reference_time=config.reference_time,
+            ),
+            first_harmonic_fractional_rms=first_harmonic_fractional_rms(
+                selected.times,
+                frequency_hz=frequency_hz,
+                reference_time=config.reference_time,
+            ),
         )
         for frequency_hz in config.frequency_grid.frequencies_hz
     )
@@ -305,3 +334,76 @@ def _validate_times(times: tuple[float, ...]) -> None:
     for time in times:
         if not isfinite(time):
             raise OscillationSearchError(f"Event time must be finite: {time}")
+
+
+def first_harmonic_phase(
+    times: tuple[float, ...],
+    *,
+    frequency_hz: float,
+    reference_time: float | None = None,
+) -> float:
+    """Return first-harmonic Rayleigh phase in radians for one frequency."""
+
+    cosine_sum, sine_sum = _first_harmonic_sum(
+        times,
+        frequency_hz=frequency_hz,
+        reference_time=reference_time,
+    )
+    return atan2(sine_sum, cosine_sum)
+
+
+def first_harmonic_fractional_rms(
+    times: tuple[float, ...],
+    *,
+    frequency_hz: float,
+    reference_time: float | None = None,
+) -> float:
+    """Return an uncorrected first-harmonic fractional-rms estimate."""
+
+    cosine_sum, sine_sum = _first_harmonic_sum(
+        times,
+        frequency_hz=frequency_hz,
+        reference_time=reference_time,
+    )
+    rayleigh_resultant = sqrt(cosine_sum * cosine_sum + sine_sum * sine_sum) / len(
+        times
+    )
+    return sqrt(2.0) * rayleigh_resultant
+
+
+def _first_harmonic_sum(
+    times: tuple[float, ...],
+    *,
+    frequency_hz: float,
+    reference_time: float | None,
+) -> tuple[float, float]:
+    _validate_times(times)
+    _validate_frequency(frequency_hz)
+    if reference_time is not None and not isfinite(reference_time):
+        raise OscillationSearchError("reference_time must be finite when set")
+    time_zero = times[0] if reference_time is None else reference_time
+    return _harmonic_sums(
+        times,
+        frequency_hz=frequency_hz,
+        n_harmonics=1,
+        reference_time=time_zero,
+    )[0]
+
+
+def _harmonic_sums(
+    times: tuple[float, ...],
+    *,
+    frequency_hz: float,
+    n_harmonics: int,
+    reference_time: float,
+) -> tuple[tuple[float, float], ...]:
+    harmonic_sums: list[tuple[float, float]] = []
+    for harmonic in range(1, n_harmonics + 1):
+        cosine_sum = 0.0
+        sine_sum = 0.0
+        for time in times:
+            phase = 2.0 * pi * harmonic * frequency_hz * (time - reference_time)
+            cosine_sum += cos(phase)
+            sine_sum += sin(phase)
+        harmonic_sums.append((cosine_sum, sine_sum))
+    return tuple(harmonic_sums)
