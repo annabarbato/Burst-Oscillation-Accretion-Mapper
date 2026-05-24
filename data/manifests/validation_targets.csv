@@ -1,1 +1,5 @@
 target_id,source_id,instrument,obs_id,minbar_burst_id,validation_goal,expected_signal,expected_frequency_hz,frequency_ref,burst_time_ref,priority,notes
+rxte_4u_1636_536_known_osc_source,4u_1636_536,RXTE/PCA,,,known_oscillation_recovery,secure_detection,581,https://academic.oup.com/mnras/article/383/1/387/1070628,,high,Source-level RXTE validation seed; exact ObsID and MINBAR burst ID TBD
+rxte_4u_1728_34_known_osc_source,4u_1728_34,RXTE/PCA,,,known_oscillation_recovery,secure_detection,363,https://academic.oup.com/mnras/article/455/2/2004/1123266,,high,Source-level RXTE validation seed; exact ObsID and MINBAR burst ID TBD
+rxte_4u_1702_429_known_osc_source,4u_1702_429,RXTE/PCA,,,known_oscillation_recovery,secure_detection,330,https://ntrs.nasa.gov/citations/19990023258,,high,Source-level RXTE validation seed; exact ObsID and MINBAR burst ID TBD
+rxte_ks_1731_260_known_osc_source,ks_1731_260,RXTE/PCA,,,known_oscillation_recovery,secure_detection,524,https://arxiv.org/abs/astro-ph/0003229,,high,Source-level RXTE validation seed; exact ObsID and MINBAR burst ID TBD

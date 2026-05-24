@@ -14,7 +14,7 @@ Canonical design constraints:
 - `sources.csv`: source-level seed metadata for known thermonuclear bursters and candidate RXTE validation sources.
 - `validation_targets.csv`: small, curated RXTE MVP target list used to choose the first ObsIDs and sources for Phase 1 validation.
 
-Both files are intentionally schema-only for now. Filling them with real targets is a separate Phase 0 task because each row needs literature or catalog references.
+The current rows are source-level Phase 1 candidates only. Exact RXTE ObsIDs and MINBAR burst IDs are intentionally left blank until the next curation pass verifies observation-level targets.
 
 ## Source Manifest Columns
 
@@ -54,7 +54,7 @@ Rules:
 | `instrument` | Yes | Must be `RXTE/PCA` for Phase 1 validation targets. |
 | `obs_id` | No | RXTE ObsID when the target is an observation-specific test. |
 | `minbar_burst_id` | No | MINBAR burst identifier or table reference, if available. |
-| `validation_goal` | Yes | What this target validates: burst detection, known oscillation recovery, non-detection control, false-positive control, or timing fixture. |
+| `validation_goal` | Yes | What this target validates: `burst_detection`, `known_oscillation_recovery`, `non_detection_control`, `false_positive_control`, or `timing_fixture`. |
 | `expected_signal` | Yes | `secure_detection`, `probable_detection`, `non_detection`, `control`, or `unknown`. |
 | `expected_frequency_hz` | No | Expected oscillation frequency if the target has a known signal. |
 | `frequency_ref` | No | Reference for expected frequency. |
@@ -77,3 +77,21 @@ Rules:
 4. Record missing but important references in `notes`; do not guess.
 5. Run the manifest sanity checks once a validation script exists.
 
+## Current Seed Status
+
+The initial high-priority validation seed contains four RXTE/PCA burst-oscillation sources:
+
+- 4U 1636-536 at approximately 581 Hz.
+- 4U 1728-34 at approximately 363 Hz.
+- 4U 1702-429 at approximately 330 Hz.
+- KS 1731-260 at approximately 524 Hz.
+
+These rows are enough to drive the next Phase 0 task: selecting exact RXTE ObsIDs and MINBAR burst references. They are not yet enough for Phase 1 implementation because the observation-level targets are still blank.
+
+References checked on 2026-05-24:
+
+- SIMBAD source coordinates and LMXB object types: https://simbad.u-strasbg.fr/simbad/
+- 4U 1636-536 581 Hz burst oscillation reference: https://academic.oup.com/mnras/article/383/1/387/1070628
+- 4U 1728-34 363 Hz RXTE burst oscillation reference: https://academic.oup.com/mnras/article/455/2/2004/1123266
+- 4U 1702-429 near-330 Hz RXTE burst oscillation reference: https://ntrs.nasa.gov/citations/19990023258
+- KS 1731-260 near-524 Hz RXTE burst oscillation reference: https://arxiv.org/abs/astro-ph/0003229
