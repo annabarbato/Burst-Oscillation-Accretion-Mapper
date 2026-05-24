@@ -124,6 +124,36 @@ class BurstTimingMatchReport:
 
 
 @dataclass(frozen=True)
+class ObservationTimingMatchReport:
+    """Timing-match report scoped to one source and ObsID."""
+
+    source_id: str
+    obs_id: str
+    report: BurstTimingMatchReport
+
+    def __post_init__(self) -> None:
+        _require_identity(self.source_id, "source_id")
+        _require_identity(self.obs_id, "obs_id")
+
+    @property
+    def metrics(self) -> BurstTimingValidationMetrics:
+        return self.report.metrics
+
+
+@dataclass(frozen=True)
+class BurstTimingValidationRunReport:
+    """Timing-match reports for a multi-observation validation run."""
+
+    observation_reports: tuple[ObservationTimingMatchReport, ...]
+
+    @property
+    def metrics(self) -> BurstTimingValidationMetrics:
+        return summarize_timing_match_reports(
+            tuple(report.report for report in self.observation_reports)
+        )
+
+
+@dataclass(frozen=True)
 class BurstTimingValidationMetrics:
     """Compact validation metrics for MINBAR timing matching."""
 
@@ -201,6 +231,43 @@ def match_detected_bursts_to_minbar(
     return BurstTimingMatchReport(matches=tuple(matches), unmatched_detections=unmatched)
 
 
+def match_detected_bursts_by_observation(
+    expected_windows: tuple[MinbarBurstWindow, ...],
+    detected_windows: tuple[DetectedBurstWindow, ...],
+    *,
+    tolerance_s: float,
+    require_passed_review: bool = True,
+) -> BurstTimingValidationRunReport:
+    """Run MINBAR timing matching independently for each source/ObsID."""
+
+    if not isfinite(tolerance_s) or tolerance_s < 0:
+        raise MinbarMatchingError(f"Invalid tolerance_s: {tolerance_s}")
+
+    candidate_pool = tuple(
+        detected
+        for detected in detected_windows
+        if detected.passes_review or not require_passed_review
+    )
+    expected_by_key = _group_expected_by_observation(expected_windows)
+    detected_by_key = _group_detected_by_observation(candidate_pool)
+    keys = tuple(sorted(set(expected_by_key) | set(detected_by_key)))
+
+    observation_reports = tuple(
+        ObservationTimingMatchReport(
+            source_id=source_id,
+            obs_id=obs_id,
+            report=match_detected_bursts_to_minbar(
+                expected_by_key.get((source_id, obs_id), ()),
+                detected_by_key.get((source_id, obs_id), ()),
+                tolerance_s=tolerance_s,
+                require_passed_review=False,
+            ),
+        )
+        for source_id, obs_id in keys
+    )
+    return BurstTimingValidationRunReport(observation_reports=observation_reports)
+
+
 def detected_windows_from_summaries(
     *,
     source_id: str,
@@ -231,30 +298,44 @@ def summarize_timing_match_report(
 ) -> BurstTimingValidationMetrics:
     """Summarize recall and review burden for one timing-match report."""
 
-    expected_count = len(report.matches)
-    detected_window_count = report.matched_count + report.unmatched_detection_count
+    return summarize_timing_match_reports((report,))
+
+
+def summarize_timing_match_reports(
+    reports: tuple[BurstTimingMatchReport, ...],
+) -> BurstTimingValidationMetrics:
+    """Summarize recall and review burden across timing-match reports."""
+
+    matches = tuple(match for report in reports for match in report.matches)
+    matched_count = sum(match.is_match for match in matches)
+    missing_count = sum(match.status == MISSING_DETECTION for match in matches)
+    unmatched_detection_count = sum(
+        report.unmatched_detection_count for report in reports
+    )
+    expected_count = len(matches)
+    detected_window_count = matched_count + unmatched_detection_count
     matched_peak_deltas = tuple(
         abs(match.peak_delta_s)
-        for match in report.matches
+        for match in matches
         if match.is_match and match.peak_delta_s is not None
     )
     max_abs_delta_values = tuple(
         match.max_abs_delta_s
-        for match in report.matches
+        for match in matches
         if match.is_match and match.max_abs_delta_s is not None
     )
 
     return BurstTimingValidationMetrics(
         expected_count=expected_count,
-        matched_count=report.matched_count,
-        missing_count=report.missing_count,
-        unmatched_detection_count=report.unmatched_detection_count,
+        matched_count=matched_count,
+        missing_count=missing_count,
+        unmatched_detection_count=unmatched_detection_count,
         detected_window_count=detected_window_count,
         recall_fraction=(
-            report.matched_count / expected_count if expected_count > 0 else None
+            matched_count / expected_count if expected_count > 0 else None
         ),
         unmatched_detection_fraction=(
-            report.unmatched_detection_count / detected_window_count
+            unmatched_detection_count / detected_window_count
             if detected_window_count > 0
             else None
         ),
@@ -271,6 +352,24 @@ def summarize_timing_match_report(
 class _ScoredCandidate:
     detection_index: int
     match: BurstTimingMatch
+
+
+def _group_expected_by_observation(
+    windows: tuple[MinbarBurstWindow, ...]
+) -> dict[tuple[str, str], tuple[MinbarBurstWindow, ...]]:
+    grouped: dict[tuple[str, str], list[MinbarBurstWindow]] = {}
+    for window in windows:
+        grouped.setdefault((window.source_id, window.obs_id), []).append(window)
+    return {key: tuple(values) for key, values in grouped.items()}
+
+
+def _group_detected_by_observation(
+    windows: tuple[DetectedBurstWindow, ...]
+) -> dict[tuple[str, str], tuple[DetectedBurstWindow, ...]]:
+    grouped: dict[tuple[str, str], list[DetectedBurstWindow]] = {}
+    for window in windows:
+        grouped.setdefault((window.source_id, window.obs_id), []).append(window)
+    return {key: tuple(values) for key, values in grouped.items()}
 
 
 def _score_candidate(

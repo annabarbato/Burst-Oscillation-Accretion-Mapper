@@ -10,8 +10,10 @@ from burst_oscillation_accretion_mapper.minbar_matching import (
     MinbarBurstWindow,
     MinbarMatchingError,
     detected_windows_from_summaries,
+    match_detected_bursts_by_observation,
     match_detected_bursts_to_minbar,
     summarize_timing_match_report,
+    summarize_timing_match_reports,
 )
 
 
@@ -133,6 +135,132 @@ def test_summarize_timing_match_report_reports_recall_and_review_burden() -> Non
     assert metrics.unmatched_detection_fraction == pytest.approx(0.5)
     assert metrics.max_abs_delta_s == pytest.approx(0.2)
     assert metrics.mean_abs_peak_delta_s == pytest.approx(0.1)
+
+
+def test_match_detected_bursts_by_observation_reports_each_obsid() -> None:
+    expected = (
+        MinbarBurstWindow(
+            source_id="4u_1636_536",
+            obs_id="10088-01-07-02",
+            minbar_burst_id="MINBAR.2257",
+            start=10.0,
+            peak=12.0,
+            stop=20.0,
+        ),
+        MinbarBurstWindow(
+            source_id="ks_1731_260",
+            obs_id="30061-01-02-01",
+            minbar_burst_id="MINBAR.2431",
+            start=30.0,
+            peak=31.0,
+            stop=40.0,
+        ),
+    )
+    detections = (
+        _detected(candidate_id="matched", start=9.9, peak=12.1, stop=20.1),
+        DetectedBurstWindow(
+            source_id="4u_1728_34",
+            obs_id="10073-01-01-00",
+            candidate_id="extra-obsid-candidate",
+            start=50.0,
+            peak=51.0,
+            stop=60.0,
+            passes_review=True,
+        ),
+    )
+
+    run_report = match_detected_bursts_by_observation(
+        expected,
+        detections,
+        tolerance_s=0.5,
+    )
+
+    assert [
+        (report.source_id, report.obs_id) for report in run_report.observation_reports
+    ] == [
+        ("4u_1636_536", "10088-01-07-02"),
+        ("4u_1728_34", "10073-01-01-00"),
+        ("ks_1731_260", "30061-01-02-01"),
+    ]
+    assert [report.metrics.expected_count for report in run_report.observation_reports] == [
+        1,
+        0,
+        1,
+    ]
+    assert run_report.metrics.expected_count == 2
+    assert run_report.metrics.matched_count == 1
+    assert run_report.metrics.missing_count == 1
+    assert run_report.metrics.unmatched_detection_count == 1
+    assert run_report.metrics.recall_fraction == pytest.approx(0.5)
+
+
+def test_match_detected_bursts_by_observation_filters_rejected_lonely_detections() -> None:
+    rejected_only = (
+        DetectedBurstWindow(
+            source_id="4u_1728_34",
+            obs_id="10073-01-01-00",
+            candidate_id="rejected-only",
+            start=50.0,
+            peak=51.0,
+            stop=60.0,
+            passes_review=False,
+        ),
+    )
+
+    default_report = match_detected_bursts_by_observation(
+        (),
+        rejected_only,
+        tolerance_s=0.0,
+    )
+    inclusive_report = match_detected_bursts_by_observation(
+        (),
+        rejected_only,
+        tolerance_s=0.0,
+        require_passed_review=False,
+    )
+
+    assert default_report.observation_reports == ()
+    assert inclusive_report.metrics.unmatched_detection_count == 1
+
+
+def test_summarize_timing_match_reports_aggregates_multiple_reports() -> None:
+    matched_report = match_detected_bursts_to_minbar(
+        (
+            MinbarBurstWindow(
+                source_id="4u_1636_536",
+                obs_id="10088-01-07-02",
+                minbar_burst_id="MINBAR.2257",
+                start=10.0,
+                peak=12.0,
+                stop=20.0,
+            ),
+        ),
+        (_detected(candidate_id="matched", start=10.0, peak=12.2, stop=20.0),),
+        tolerance_s=0.3,
+    )
+    missing_report = match_detected_bursts_to_minbar(
+        (
+            MinbarBurstWindow(
+                source_id="ks_1731_260",
+                obs_id="30061-01-02-01",
+                minbar_burst_id="MINBAR.2431",
+                start=30.0,
+                peak=31.0,
+                stop=40.0,
+            ),
+        ),
+        (),
+        tolerance_s=0.3,
+    )
+
+    metrics = summarize_timing_match_reports((matched_report, missing_report))
+
+    assert metrics.expected_count == 2
+    assert metrics.matched_count == 1
+    assert metrics.missing_count == 1
+    assert metrics.detected_window_count == 1
+    assert metrics.recall_fraction == pytest.approx(0.5)
+    assert metrics.mean_abs_peak_delta_s == pytest.approx(0.2)
 
 
 def test_match_detected_bursts_to_minbar_reports_missing_outside_tolerance() -> None:
@@ -303,6 +431,9 @@ def test_minbar_matching_validates_windows_and_tolerance() -> None:
 
     with pytest.raises(MinbarMatchingError, match="Invalid tolerance"):
         match_detected_bursts_to_minbar((), (), tolerance_s=-1.0)
+
+    with pytest.raises(MinbarMatchingError, match="Invalid tolerance"):
+        match_detected_bursts_by_observation((), (), tolerance_s=-1.0)
 
     with pytest.raises(MinbarMatchingError, match="start_index"):
         detected_windows_from_summaries(
