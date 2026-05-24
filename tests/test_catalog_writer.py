@@ -1,3 +1,4 @@
+import math
 import sqlite3
 
 import pytest
@@ -46,6 +47,8 @@ def test_candidate_catalog_row_from_review_preserves_required_fields() -> None:
     assert row.frequency_hz == 581.0
     assert row.expected_frequency_hz == 581.0
     assert row.z2_power == 42.0
+    assert row.p_single == pytest.approx(math.exp(-21.0))
+    assert row.p_trials == pytest.approx(1.0 - (1.0 - math.exp(-21.0)) ** 5)
     assert row.fractional_rms == 0.12
     assert row.phase_rad == 1.25
     assert row.reasons == ("z2_below_secure_threshold",)
@@ -84,7 +87,11 @@ def test_write_candidate_review_round_trips_detection_and_non_detection() -> Non
     assert rows[0].window_start is None
     assert rows[0].frequency_hz is None
     assert rows[0].z2_power is None
+    assert rows[0].p_single is None
+    assert rows[0].p_trials is None
     assert rows[0].reasons == ("no_searched_windows",)
+    assert rows[1].p_single == pytest.approx(math.exp(-21.0))
+    assert rows[1].p_trials == pytest.approx(1.0 - (1.0 - math.exp(-21.0)) ** 5)
 
 
 def test_initialize_candidate_catalog_creates_expected_table() -> None:
@@ -99,6 +106,15 @@ def test_initialize_candidate_catalog_creates_expected_table() -> None:
         )
     }
     assert OSCILLATION_CANDIDATE_TABLE in table_names
+
+    columns = {
+        row[1]
+        for row in connection.execute(
+            f"PRAGMA table_info({OSCILLATION_CANDIDATE_TABLE})"
+        )
+    }
+    assert "p_single" in columns
+    assert "p_trials" in columns
 
 
 def test_write_candidate_review_rejects_duplicate_candidate_id() -> None:
@@ -143,6 +159,36 @@ def test_candidate_catalog_row_from_review_validates_numeric_fields() -> None:
     )
 
     with pytest.raises(CatalogWriteError, match="trial_count"):
+        candidate_catalog_row_from_review(
+            review,
+            context=CandidateCatalogWriteContext(
+                candidate_id="candidate",
+                pipeline_version="phase1-test",
+            ),
+        )
+
+
+def test_candidate_catalog_row_from_review_requires_harmonic_metadata_for_power() -> None:
+    review = OscillationCandidateReview(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        search_mode="targeted_known_frequency",
+        classification=PROBABLE_DETECTION,
+        trial_count=5,
+        photon_count=20,
+        window=TimeInterval(10.0, 12.0),
+        frequency_hz=581.0,
+        expected_frequency_hz=581.0,
+        frequency_offset_hz=0.0,
+        z2_power=42.0,
+        n_harmonics=None,
+        fractional_rms=0.12,
+        phase_rad=1.25,
+        reasons=(),
+    )
+
+    with pytest.raises(CatalogWriteError, match="n_harmonics"):
         candidate_catalog_row_from_review(
             review,
             context=CandidateCatalogWriteContext(

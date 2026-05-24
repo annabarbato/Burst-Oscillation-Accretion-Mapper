@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from math import isfinite
 
 from .candidate_scoring import OscillationCandidateReview
+from .timing_significance import z2_trial_significance
 
 
 OSCILLATION_CANDIDATE_TABLE = "oscillation_candidate_reviews"
@@ -60,6 +61,8 @@ class CandidateCatalogRow:
     frequency_offset_hz: float | None
     z2_power: float | None
     n_harmonics: int | None
+    p_single: float | None
+    p_trials: float | None
     fractional_rms: float | None
     phase_rad: float | None
     reasons: tuple[str, ...]
@@ -78,6 +81,7 @@ def candidate_catalog_row_from_review(
     _validate_review(review)
     window_start = review.window.start if review.window is not None else None
     window_stop = review.window.stop if review.window is not None else None
+    p_single, p_trials = _review_significance_p_values(review)
     return CandidateCatalogRow(
         candidate_id=context.candidate_id,
         burst_id=context.burst_id,
@@ -96,6 +100,8 @@ def candidate_catalog_row_from_review(
         frequency_offset_hz=review.frequency_offset_hz,
         z2_power=review.z2_power,
         n_harmonics=review.n_harmonics,
+        p_single=p_single,
+        p_trials=p_trials,
         fractional_rms=review.fractional_rms,
         phase_rad=review.phase_rad,
         reasons=review.reasons,
@@ -128,6 +134,8 @@ def initialize_candidate_catalog(connection: sqlite3.Connection) -> None:
             frequency_offset_hz REAL,
             z2_power REAL,
             n_harmonics INTEGER,
+            p_single REAL,
+            p_trials REAL,
             fractional_rms REAL,
             phase_rad REAL,
             reasons_json TEXT NOT NULL,
@@ -167,13 +175,15 @@ def write_candidate_catalog_row(
             frequency_offset_hz,
             z2_power,
             n_harmonics,
+            p_single,
+            p_trials,
             fractional_rms,
             phase_rad,
             reasons_json,
             pipeline_version,
             search_config_id,
             provenance_note
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         _row_to_sql_values(row),
     )
@@ -219,6 +229,8 @@ def read_candidate_catalog_rows(
             frequency_offset_hz,
             z2_power,
             n_harmonics,
+            p_single,
+            p_trials,
             fractional_rms,
             phase_rad,
             reasons_json,
@@ -251,6 +263,8 @@ def _row_to_sql_values(row: CandidateCatalogRow) -> tuple[object, ...]:
         row.frequency_offset_hz,
         row.z2_power,
         row.n_harmonics,
+        row.p_single,
+        row.p_trials,
         row.fractional_rms,
         row.phase_rad,
         json.dumps(list(row.reasons), sort_keys=True),
@@ -280,12 +294,14 @@ def _row_from_sql_values(values: sqlite3.Row | tuple[object, ...]) -> CandidateC
         frequency_offset_hz=_optional_float(row[14]),
         z2_power=_optional_float(row[15]),
         n_harmonics=_optional_int(row[16]),
-        fractional_rms=_optional_float(row[17]),
-        phase_rad=_optional_float(row[18]),
-        reasons=tuple(json.loads(str(row[19]))),
-        pipeline_version=str(row[20]),
-        search_config_id=str(row[21]),
-        provenance_note=str(row[22]),
+        p_single=_optional_float(row[17]),
+        p_trials=_optional_float(row[18]),
+        fractional_rms=_optional_float(row[19]),
+        phase_rad=_optional_float(row[20]),
+        reasons=tuple(json.loads(str(row[21]))),
+        pipeline_version=str(row[22]),
+        search_config_id=str(row[23]),
+        provenance_note=str(row[24]),
     )
 
 
@@ -302,6 +318,12 @@ def _validate_review(review: OscillationCandidateReview) -> None:
         raise CatalogWriteError("trial_count cannot be negative")
     if review.photon_count < 0:
         raise CatalogWriteError("photon_count cannot be negative")
+    if review.z2_power is not None and review.trial_count < 1:
+        raise CatalogWriteError("trial_count must be positive when z2_power is set")
+    if review.z2_power is not None and review.n_harmonics is None:
+        raise CatalogWriteError("n_harmonics is required when z2_power is set")
+    if review.n_harmonics is not None and review.n_harmonics < 1:
+        raise CatalogWriteError("n_harmonics must be positive when set")
     for field_name, value in (
         ("frequency_hz", review.frequency_hz),
         ("expected_frequency_hz", review.expected_frequency_hz),
@@ -311,6 +333,20 @@ def _validate_review(review: OscillationCandidateReview) -> None:
         ("phase_rad", review.phase_rad),
     ):
         _require_optional_finite(value, field_name)
+
+
+def _review_significance_p_values(
+    review: OscillationCandidateReview,
+) -> tuple[float | None, float | None]:
+    if review.z2_power is None or review.n_harmonics is None or review.trial_count == 0:
+        return None, None
+
+    significance = z2_trial_significance(
+        review.z2_power,
+        n_harmonics=review.n_harmonics,
+        trial_count=review.trial_count,
+    )
+    return significance.p_single, significance.p_trials
 
 
 def _require_text(value: str, field: str) -> None:
