@@ -1,0 +1,57 @@
+# Python caches and local test output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local Python environments
+.venv/
+venv/
+env/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Local mission archives and generated science products
+data/raw/
+data/processed/
+data/external/
+data/products/
+data/local/
+
+# Large data products should be represented by manifests, not committed.
+data/**/*.fits
+data/**/*.fit
+data/**/*.evt
+data/**/*.evt.gz
+data/**/*.pha
+data/**/*.arf
+data/**/*.rmf
+data/**/*.lc
+data/**/*.parquet
+data/**/*.h5
+data/**/*.hdf5
+data/**/*.db
+data/**/*.sqlite
+data/**/*.sqlite3
+data/**/*.pkl
+data/**/*.pickle
+data/**/*.png
+data/**/*.pdf
+
+# Preserve tracked Phase 0 metadata.
+!data/README.md
+!data/manifests/
+!data/manifests/*.csv
+!data/manifests/README.md
+
