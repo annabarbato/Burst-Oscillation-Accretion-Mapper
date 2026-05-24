@@ -18,7 +18,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.burst_detection`: configurable Poisson excess scoring, grouping of adjacent interval candidates, binned morphology review, multi-cadence review clustering, and cluster summary products for later MINBAR/catalog comparison.
 - `burst_oscillation_accretion_mapper.candidate_scoring`: conservative configured scoring of targeted oscillation-search products into secure/probable/marginal/non-detection review summaries.
 - `burst_oscillation_accretion_mapper.catalog_writer`: SQLite development catalog writer for Phase 1 oscillation candidate rows, scored control rows, non-detections, and nominal timing significance fields.
-- `burst_oscillation_accretion_mapper.control_checks`: targeted control-window search/scoring runner for Phase 1 empirical false-alarm checks.
+- `burst_oscillation_accretion_mapper.control_checks`: targeted control-window search/scoring runner plus explicit control-clearance evidence checks for Phase 1 empirical false-alarm review.
 - `burst_oscillation_accretion_mapper.control_intervals`: deterministic pre/post-burst control-window generation and empirical false-alarm summaries for scored controls.
 - `burst_oscillation_accretion_mapper.event_products`: in-memory event product metadata, provenance, GTI-aware slicing, and energy filtering primitives.
 - `burst_oscillation_accretion_mapper.external_tools`: read-only HEASoft/CALDB environment snapshots.

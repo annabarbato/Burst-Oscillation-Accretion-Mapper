@@ -8,6 +8,7 @@ p-values, perform trials correction, or change candidate thresholds.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from .candidate_scoring import (
     CandidateEvidenceFlags,
@@ -32,6 +33,10 @@ from .oscillation_search import (
 from .time_intervals import TimeInterval
 
 
+class ControlCheckError(ValueError):
+    """Raised when control false-alarm policy inputs are invalid."""
+
+
 @dataclass(frozen=True)
 class ControlSearchRun:
     """Scored control-window products for one burst or review context."""
@@ -50,6 +55,40 @@ class ControlSearchRun:
     @property
     def has_detection_like_controls(self) -> bool:
         return self.summary.detection_like_count > 0
+
+
+@dataclass(frozen=True)
+class ControlClearancePolicy:
+    """Policy for deciding whether controls clear a candidate review."""
+
+    require_controls: bool = True
+    max_secure_count: int = 0
+    max_probable_count: int = 0
+    max_marginal_count: int = 0
+    max_false_alarm_fraction: float | None = None
+
+    def __post_init__(self) -> None:
+        _require_non_negative_int(self.max_secure_count, "max_secure_count")
+        _require_non_negative_int(self.max_probable_count, "max_probable_count")
+        _require_non_negative_int(self.max_marginal_count, "max_marginal_count")
+        if self.max_false_alarm_fraction is not None and (
+            not isfinite(self.max_false_alarm_fraction)
+            or self.max_false_alarm_fraction < 0
+            or self.max_false_alarm_fraction > 1
+        ):
+            raise ControlCheckError(
+                "max_false_alarm_fraction must be a probability in [0, 1]"
+            )
+
+
+@dataclass(frozen=True)
+class ControlClearanceReview:
+    """Result of applying a control-clearance policy to scored controls."""
+
+    summary: ControlFalseAlarmSummary
+    policy: ControlClearancePolicy
+    passed: bool
+    reasons: tuple[str, ...]
 
 
 def search_and_score_control_windows(
@@ -116,6 +155,56 @@ def build_search_and_score_pre_post_controls(
     )
 
 
+def evaluate_control_clearance(
+    control_run: ControlSearchRun,
+    *,
+    policy: ControlClearancePolicy | None = None,
+) -> ControlClearanceReview:
+    """Evaluate whether scored controls clear candidate-promotion evidence."""
+
+    if policy is None:
+        policy = ControlClearancePolicy()
+    summary = control_run.summary
+    reasons: list[str] = []
+
+    if policy.require_controls and summary.control_count == 0:
+        reasons.append("no_controls_available")
+    if summary.secure_count > policy.max_secure_count:
+        reasons.append("secure_control_count_exceeds_policy")
+    if summary.probable_count > policy.max_probable_count:
+        reasons.append("probable_control_count_exceeds_policy")
+    if summary.marginal_count > policy.max_marginal_count:
+        reasons.append("marginal_control_count_exceeds_policy")
+    if (
+        policy.max_false_alarm_fraction is not None
+        and summary.false_alarm_fraction is not None
+        and summary.false_alarm_fraction > policy.max_false_alarm_fraction
+    ):
+        reasons.append("control_false_alarm_fraction_exceeds_policy")
+
+    return ControlClearanceReview(
+        summary=summary,
+        policy=policy,
+        passed=not reasons,
+        reasons=tuple(reasons),
+    )
+
+
+def evidence_with_control_clearance(
+    evidence: CandidateEvidenceFlags,
+    clearance: ControlClearanceReview,
+) -> CandidateEvidenceFlags:
+    """Return candidate evidence with control clearance set from controls."""
+
+    return CandidateEvidenceFlags(
+        physically_plausible_phase=evidence.physically_plausible_phase,
+        control_clearance=clearance.passed,
+        sensitivity_confirmed=evidence.sensitivity_confirmed,
+        coherent_structure=evidence.coherent_structure,
+        phase_evolution_ok=evidence.phase_evolution_ok,
+    )
+
+
 def _score_control_window(
     event_product: EventProduct,
     *,
@@ -138,3 +227,8 @@ def _score_control_window(
         expected_frequency_hz=expected_frequency_hz,
         evidence=evidence,
     )
+
+
+def _require_non_negative_int(value: int, field: str) -> None:
+    if not isinstance(value, int) or value < 0:
+        raise ControlCheckError(f"{field} must be a non-negative integer")
