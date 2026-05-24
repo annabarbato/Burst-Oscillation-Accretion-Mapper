@@ -17,6 +17,7 @@ Expected early test areas:
 - RXTE/PCA ingestion preflight behavior before FITS parsing.
 - Manifest parsing and validation.
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
+- Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - Targeted event-based `Z_n^2` oscillation-search, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window primitives on synthetic events.
 - Deterministic targeted-search review configuration fingerprints for catalog provenance.

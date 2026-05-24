@@ -6,15 +6,16 @@ The project is intentionally framed around burst oscillations near neutron-star 
 
 ## Current Status
 
-Phase 0 is closed. The repository now contains the architecture, roadmap, environment notes, source/reference manifests, RXTE/PCA validation targets, and manifest validation checks needed to begin the Phase 1 RXTE validation MVP.
+Phase 0 is closed. The repository contains the architecture, roadmap, environment notes, source/reference manifests, RXTE/PCA validation targets, and manifest validation checks needed to ground the RXTE validation MVP.
 
-Phase 1 should start with RXTE/PCA, using MINBAR-linked validation observations before adding NICER/XTI or dashboard work.
+Phase 1 implementation scaffolding is in place for RXTE/PCA validation: event products, light curves, burst detection summaries, MINBAR timing matches, targeted oscillation search, conservative candidate scoring, controls, development catalog rows, and validation-run gates. Real RXTE FITS parsing and HEASoft execution remain an operational follow-up once local raw products and tool availability are confirmed.
 
 ## Key Documents
 
 - [Architecture](docs/architecture.md): technical architecture, scientific framing, pipeline modules, data products, storage model, candidate classes, and inference layer.
 - [Roadmap](docs/roadmap.md): phase-by-phase build plan and acceptance criteria.
 - [Phase 0 status](docs/phase-0-status.md): closed Phase 0 gate and selected RXTE/PCA validation set.
+- [Phase 1 status](docs/phase-1-status.md): current RXTE validation MVP implementation status and explicit deferrals.
 - [Repository structure](docs/repository-structure.md): proposed directories and ownership boundaries.
 - [Environment strategy](docs/environment.md): local scientific tooling plan and packaging path.
 - [Source citation policy](docs/source-citation-policy.md): rules for dated mission, catalog, software, and literature claims.
@@ -37,20 +38,27 @@ These rows live in [observations.csv](data/manifests/observations.csv) and [vali
 ```text
 docs/                 Architecture, roadmap, environment, and status docs.
 data/manifests/       Tracked CSV manifests and reference index.
-tests/                Lightweight manifest validation checks.
+src/                  Phase 1 Python package modules.
+tests/                Manifest checks and lightweight unit tests.
 ```
 
-Future Phase 1 work will add implementation directories such as `src/`, `pipelines/`, and fixture-oriented tests as the RXTE validation MVP is built.
+Generated science products, raw event files, and local catalogs stay outside git; tracked code and manifests preserve the reproducible shape of the validation run.
 
 ## Validate Manifests
 
-Run the current repository check with:
+Run the manifest check with:
 
 ```powershell
 python tests\validate_manifests.py
 ```
 
 The validator checks manifest schemas, source and observation references, RXTE/PCA-only Phase 0/1 targets, required references, and basic field constraints.
+
+Run the Python test suite with:
+
+```powershell
+python -m pytest
+```
 
 ## Data Policy
 
