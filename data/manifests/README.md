@@ -13,6 +13,7 @@ Canonical design constraints:
 
 - `sources.csv`: source-level seed metadata for known thermonuclear bursters and candidate RXTE validation sources.
 - `validation_targets.csv`: small, curated RXTE MVP target list used to choose the first ObsIDs and sources for Phase 1 validation.
+- `references.csv`: tracked index of authoritative sources used by docs, manifests, and future provenance records.
 
 The current rows are source-level Phase 1 candidates only. Exact RXTE ObsIDs and MINBAR burst IDs are intentionally left blank until the next curation pass verifies observation-level targets.
 
@@ -69,13 +70,38 @@ Rules:
 - Do not mark a target as `secure_detection` without a reference for the expected frequency or burst-oscillation detection.
 - Keep the initial Phase 1 target list small: 3-5 known burst-oscillation sources, as described in the roadmap.
 
+## Reference Manifest Columns
+
+`references.csv`
+
+| Column | Required | Meaning |
+| --- | --- | --- |
+| `ref_id` | Yes | Stable lower snake case identifier for reuse in manifests and docs. |
+| `category` | Yes | Reference type: `mission_status`, `instrument_spec`, `catalog`, `software_doc`, `literature`, or `ephemeris`. |
+| `title` | Yes | Short human-readable source title. |
+| `url` | Yes | Authoritative URL where the source can be checked. |
+| `doi` | No | DOI when available. |
+| `bibcode` | No | ADS bibcode when available. |
+| `version_or_date` | No | Source version, publication year, catalog release, or mission notice date. |
+| `checked_date` | Yes | Date the source was checked in `YYYY-MM-DD` format. |
+| `authoritative_for` | Yes | Concise statement of what this source supports. |
+| `notes` | No | Short caveats. |
+
+Rules:
+
+- Add a reference row before adding durable new science, mission, instrument, catalog, software, or ephemeris claims.
+- Use `mission_status` for claims that can change and include a current checked date.
+- Prefer primary mission pages, catalog docs, peer-reviewed papers, ADS-linked records, or official software docs.
+- Keep `authoritative_for` narrow so future reviewers know exactly why the source was cited.
+
 ## Curation Workflow
 
 1. Add or update `sources.csv` rows with references for coordinates, source class, spin/frequency, and MINBAR mapping.
 2. Add `validation_targets.csv` rows only after the source row exists.
-3. Prefer RXTE/PCA targets with MINBAR coverage for the first Phase 1 MVP.
-4. Record missing but important references in `notes`; do not guess.
-5. Run the manifest sanity checks once a validation script exists.
+3. Add or reuse `references.csv` rows for durable claims and source-specific values.
+4. Prefer RXTE/PCA targets with MINBAR coverage for the first Phase 1 MVP.
+5. Record missing but important references in `notes`; do not guess.
+6. Run the manifest sanity checks once a validation script exists.
 
 ## Current Seed Status
 
