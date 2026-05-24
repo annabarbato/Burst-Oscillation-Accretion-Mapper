@@ -11,3 +11,12 @@ Expected early test areas:
 
 Large mission data products must not be committed as fixtures. Use tiny synthetic data or documented external-data skips.
 
+## Current Checks
+
+Run the Phase 0 manifest validation check with:
+
+```powershell
+python tests/validate_manifests.py
+```
+
+The check uses only the Python standard library and validates tracked CSV schemas, required fields, references, source IDs, RXTE-only validation scope, numeric coordinates, and expected oscillation frequencies.

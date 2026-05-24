@@ -101,7 +101,7 @@ Rules:
 3. Add or reuse `references.csv` rows for durable claims and source-specific values.
 4. Prefer RXTE/PCA targets with MINBAR coverage for the first Phase 1 MVP.
 5. Record missing but important references in `notes`; do not guess.
-6. Run the manifest sanity checks once a validation script exists.
+6. Run `python tests/validate_manifests.py` after manifest edits.
 
 ## Current Seed Status
 
