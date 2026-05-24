@@ -5,9 +5,14 @@ import pytest
 from burst_oscillation_accretion_mapper.burst_detection import (
     BurstDetectionConfig,
     BurstDetectionError,
+    BurstCandidateReview,
     BurstIntervalCandidate,
+    BurstMorphologySummary,
+    MultiCadenceBurstCandidateReview,
     MorphologyReviewConfig,
+    cluster_overlapping_candidate_reviews,
     find_burst_interval_reviews,
+    find_multi_cadence_burst_reviews,
     group_excess_bins,
     review_candidate_morphology,
     score_light_curve_excess,
@@ -18,6 +23,7 @@ from burst_oscillation_accretion_mapper.event_products import EventProduct
 from burst_oscillation_accretion_mapper.lightcurves import (
     estimate_rolling_baseline,
     make_light_curve,
+    make_multi_cadence_light_curves,
 )
 from burst_oscillation_accretion_mapper.time_intervals import TimeInterval
 
@@ -281,3 +287,197 @@ def test_find_burst_interval_reviews_returns_intermediate_products() -> None:
     assert len(result.passed_reviews) == 1
     assert result.passed_reviews[0].candidate.start == 2.0
     assert result.passed_reviews[0].morphology.excess_counts == 8.0
+
+
+def test_find_multi_cadence_burst_reviews_runs_per_cadence_configs() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+
+    reviews = find_multi_cadence_burst_reviews(
+        light_curves,
+        detection_configs={
+            1.0: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=3.0,
+                excluded_bins=frozenset({2}),
+            ),
+            0.5: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=2.0,
+                excluded_bins=frozenset({4, 5}),
+            ),
+        },
+        morphology_config=MorphologyReviewConfig(
+            min_excess_counts=1.0,
+            min_peak_score=2.0,
+        ),
+    )
+
+    assert tuple(review.bin_size for review in reviews) == (0.5, 1.0)
+    assert all(review.review.passes_review for review in reviews)
+    assert {review.review.candidate.start for review in reviews} == {2.0}
+
+
+def test_find_multi_cadence_burst_reviews_requires_each_cadence_config() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+
+    with pytest.raises(BurstDetectionError, match="Missing detection config"):
+        find_multi_cadence_burst_reviews(
+            light_curves,
+            detection_configs={
+                1.0: BurstDetectionConfig(
+                    baseline_window_bins=2,
+                    excess_threshold=3.0,
+                    excluded_bins=frozenset({2}),
+                )
+            },
+        )
+
+
+def test_find_multi_cadence_burst_reviews_can_return_passed_only() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+
+    reviews = find_multi_cadence_burst_reviews(
+        light_curves,
+        detection_configs={
+            1.0: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=3.0,
+                excluded_bins=frozenset({2}),
+            ),
+            0.5: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=2.0,
+                excluded_bins=frozenset({4, 5}),
+            ),
+        },
+        morphology_config=MorphologyReviewConfig(min_excess_counts=10.0),
+        passed_only=True,
+    )
+
+    assert reviews == ()
+
+
+def test_cluster_overlapping_candidate_reviews_groups_cadences() -> None:
+    product = _synthetic_multi_cadence_event_product()
+    light_curves = make_multi_cadence_light_curves(
+        product,
+        interval=TimeInterval(0.0, 5.0),
+        bin_sizes=(1.0, 0.5),
+    )
+    reviews = find_multi_cadence_burst_reviews(
+        light_curves,
+        detection_configs={
+            1.0: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=3.0,
+                excluded_bins=frozenset({2}),
+            ),
+            0.5: BurstDetectionConfig(
+                baseline_window_bins=2,
+                excess_threshold=2.0,
+                excluded_bins=frozenset({4, 5}),
+            ),
+        },
+        morphology_config=MorphologyReviewConfig(
+            min_excess_counts=1.0,
+            min_peak_score=2.0,
+        ),
+    )
+
+    clusters = cluster_overlapping_candidate_reviews(reviews)
+
+    assert len(clusters) == 1
+    assert clusters[0].start == 2.0
+    assert clusters[0].stop == 3.0
+    assert clusters[0].bin_sizes == (0.5, 1.0)
+    assert clusters[0].passes_any_review
+    assert clusters[0].best_peak_score == pytest.approx(
+        max(review.review.candidate.peak_score for review in reviews)
+    )
+
+
+def test_cluster_overlapping_candidate_reviews_keeps_separate_intervals() -> None:
+    reviews = tuple(
+        MultiCadenceBurstCandidateReview(
+            bin_size=1.0,
+            review=_review_for_interval(start=start, stop=stop),
+        )
+        for start, stop in ((2.0, 3.0), (4.0, 5.0))
+    )
+
+    clusters = cluster_overlapping_candidate_reviews(reviews)
+
+    assert [(cluster.start, cluster.stop) for cluster in clusters] == [
+        (2.0, 3.0),
+        (4.0, 5.0),
+    ]
+
+
+def _synthetic_multi_cadence_event_product() -> EventProduct:
+    return EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(
+            0.1,
+            1.1,
+            2.05,
+            2.15,
+            2.25,
+            2.35,
+            2.45,
+            2.55,
+            2.65,
+            2.75,
+            2.85,
+            3.1,
+            4.1,
+        ),
+        gtis=(TimeInterval(0.0, 5.0),),
+    )
+
+
+def _review_for_interval(start: float, stop: float) -> BurstCandidateReview:
+    candidate = BurstIntervalCandidate(
+        start=start,
+        stop=stop,
+        first_bin_index=int(start),
+        last_bin_index=int(stop) - 1,
+        peak_bin_index=int(start),
+        peak_score=3.0,
+        total_counts=5,
+        total_expected_counts=1.0,
+        n_bins=1,
+    )
+    return BurstCandidateReview(
+        candidate=candidate,
+        morphology=BurstMorphologySummary(
+            start=start,
+            peak_time=0.5 * (start + stop),
+            stop=stop,
+            duration=stop - start,
+            approximate_rise_time=stop - start,
+            approximate_decay_time=stop - start,
+            peak_rate=5.0,
+            total_counts=5,
+            total_expected_counts=1.0,
+            excess_counts=4.0,
+            n_bins=1,
+        ),
+        rejection_reasons=(),
+    )

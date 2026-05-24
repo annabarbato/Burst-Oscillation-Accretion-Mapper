@@ -15,6 +15,7 @@ from .lightcurves import (
     BaselineEstimate,
     LightCurve,
     LightCurveError,
+    MultiCadenceLightCurves,
     estimate_rolling_baseline,
 )
 
@@ -160,6 +161,64 @@ class BurstCandidateSearchResult:
     @property
     def passed_reviews(self) -> tuple[BurstCandidateReview, ...]:
         return tuple(review for review in self.reviews if review.passes_review)
+
+
+@dataclass(frozen=True)
+class MultiCadenceBurstCandidateReview:
+    """A reviewed interval candidate from one light-curve cadence."""
+
+    bin_size: float
+    review: BurstCandidateReview
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.bin_size) or self.bin_size <= 0:
+            raise BurstDetectionError(f"Invalid bin_size: {self.bin_size}")
+
+
+@dataclass(frozen=True)
+class MultiCadenceBurstCandidateCluster:
+    """Conservative overlap cluster of reviewed candidates across cadences."""
+
+    start: float
+    stop: float
+    reviews: tuple[MultiCadenceBurstCandidateReview, ...]
+
+    def __post_init__(self) -> None:
+        if not self.reviews:
+            raise BurstDetectionError("At least one review is required")
+        if (
+            not isfinite(self.start)
+            or not isfinite(self.stop)
+            or self.stop <= self.start
+        ):
+            raise BurstDetectionError("Invalid cluster interval")
+
+    @property
+    def duration(self) -> float:
+        return self.stop - self.start
+
+    @property
+    def bin_sizes(self) -> tuple[float, ...]:
+        return tuple(sorted({review.bin_size for review in self.reviews}))
+
+    @property
+    def best_review(self) -> BurstCandidateReview:
+        return max(
+            (review.review for review in self.reviews),
+            key=lambda review: (
+                review.candidate.peak_score,
+                review.morphology.excess_counts,
+                review.candidate.duration,
+            ),
+        )
+
+    @property
+    def best_peak_score(self) -> float:
+        return self.best_review.candidate.peak_score
+
+    @property
+    def passes_any_review(self) -> bool:
+        return any(review.review.passes_review for review in self.reviews)
 
 
 def signed_poisson_sqrt_deviance(observed_counts: int, expected_counts: float) -> float:
@@ -352,6 +411,91 @@ def find_burst_interval_reviews(
         for candidate in candidates
     )
     return BurstCandidateSearchResult(baseline=baseline, scores=scores, reviews=reviews)
+
+
+def find_multi_cadence_burst_reviews(
+    light_curves: MultiCadenceLightCurves,
+    *,
+    detection_configs: dict[float, BurstDetectionConfig],
+    morphology_config: MorphologyReviewConfig = MorphologyReviewConfig(),
+    passed_only: bool = False,
+) -> tuple[MultiCadenceBurstCandidateReview, ...]:
+    """Run interval review for each cadence with explicit per-cadence config."""
+
+    missing_bin_sizes = tuple(
+        bin_size
+        for bin_size in light_curves.bin_sizes
+        if bin_size not in detection_configs
+    )
+    if missing_bin_sizes:
+        raise BurstDetectionError(
+            "Missing detection config for bin sizes: "
+            + ", ".join(str(bin_size) for bin_size in missing_bin_sizes)
+        )
+
+    reviews: list[MultiCadenceBurstCandidateReview] = []
+    for bin_size in light_curves.bin_sizes:
+        result = find_burst_interval_reviews(
+            light_curves.get(bin_size),
+            detection_config=detection_configs[bin_size],
+            morphology_config=morphology_config,
+        )
+        cadence_reviews = result.passed_reviews if passed_only else result.reviews
+        reviews.extend(
+            MultiCadenceBurstCandidateReview(bin_size=bin_size, review=review)
+            for review in cadence_reviews
+        )
+    return tuple(reviews)
+
+
+def cluster_overlapping_candidate_reviews(
+    reviews: tuple[MultiCadenceBurstCandidateReview, ...],
+) -> tuple[MultiCadenceBurstCandidateCluster, ...]:
+    """Cluster reviewed candidates whose intervals overlap or touch."""
+
+    if not reviews:
+        return ()
+
+    sorted_reviews = sorted(
+        reviews,
+        key=lambda review: (
+            review.review.candidate.start,
+            review.review.candidate.stop,
+            review.bin_size,
+        ),
+    )
+    current_reviews: list[MultiCadenceBurstCandidateReview] = [sorted_reviews[0]]
+    current_start = sorted_reviews[0].review.candidate.start
+    current_stop = sorted_reviews[0].review.candidate.stop
+    clusters: list[MultiCadenceBurstCandidateCluster] = []
+
+    for review in sorted_reviews[1:]:
+        candidate = review.review.candidate
+        if candidate.start <= current_stop:
+            current_reviews.append(review)
+            current_start = min(current_start, candidate.start)
+            current_stop = max(current_stop, candidate.stop)
+            continue
+
+        clusters.append(
+            MultiCadenceBurstCandidateCluster(
+                start=current_start,
+                stop=current_stop,
+                reviews=tuple(current_reviews),
+            )
+        )
+        current_reviews = [review]
+        current_start = candidate.start
+        current_stop = candidate.stop
+
+    clusters.append(
+        MultiCadenceBurstCandidateCluster(
+            start=current_start,
+            stop=current_stop,
+            reviews=tuple(current_reviews),
+        )
+    )
+    return tuple(clusters)
 
 
 def _append_candidate_if_valid(
