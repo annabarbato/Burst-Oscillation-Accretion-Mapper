@@ -4,6 +4,7 @@ This directory is reserved for automated tests and small fixtures.
 
 Expected early test areas:
 
+- Poisson excess scoring and conservative interval grouping on synthetic light curves.
 - No-download archive planning for selected RXTE/PCA raw products.
 - HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.
