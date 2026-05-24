@@ -16,6 +16,7 @@ Current modules:
 
 - `burst_oscillation_accretion_mapper.archive_plan`: no-download RXTE raw archive planning from validation manifests.
 - `burst_oscillation_accretion_mapper.event_products`: in-memory event product metadata, provenance, GTI-aware slicing, and energy filtering primitives.
+- `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected event binning for early burst-detection work.
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
 - `burst_oscillation_accretion_mapper.time_intervals`: small GTI and event-window helpers for future event slicing.
 

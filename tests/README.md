@@ -7,6 +7,7 @@ Expected early test areas:
 - No-download archive planning for selected RXTE/PCA raw products.
 - Manifest parsing and validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
+- GTI-corrected light-curve binning on synthetic events.
 - In-memory event product slicing on synthetic events.
 - Time-window and GTI handling with half-open event intervals.
 - Synthetic event fixtures with known burst envelopes.
