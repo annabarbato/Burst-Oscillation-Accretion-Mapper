@@ -18,6 +18,10 @@ env/
 .env.*
 !.env.example
 
+# Local agent instructions
+AGENTS.md
+agents.md
+
 # Notebook checkpoints
 .ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
@@ -54,4 +58,3 @@ data/**/*.pdf
 !data/manifests/
 !data/manifests/*.csv
 !data/manifests/README.md
-
