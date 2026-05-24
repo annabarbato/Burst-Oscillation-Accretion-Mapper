@@ -5,7 +5,9 @@ This directory is reserved for automated tests and small fixtures.
 Expected early test areas:
 
 - No-download archive planning for selected RXTE/PCA raw products.
+- HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.
+- RXTE/PCA detector-selection and barycenter provenance configuration.
 - RXTE/PCA ingestion preflight behavior before FITS parsing.
 - Manifest parsing and validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.

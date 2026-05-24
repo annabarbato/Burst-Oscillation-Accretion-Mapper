@@ -3,10 +3,16 @@ from pathlib import Path
 import pytest
 
 from burst_oscillation_accretion_mapper.archive_plan import RawObservationPlan
+from burst_oscillation_accretion_mapper.external_tools import ExternalToolEnvironment
 from burst_oscillation_accretion_mapper.rxte_backend import (
     RxtePreflightError,
+    build_rxte_event_provenance,
     prepare_rxte_observation,
     prepare_rxte_observations,
+)
+from burst_oscillation_accretion_mapper.rxte_config import (
+    RxteDetectorSelection,
+    RxteIngestionConfig,
 )
 
 
@@ -73,6 +79,38 @@ def test_prepare_rxte_observations_validates_multiple_plans(tmp_path: Path) -> N
     )
 
     assert tuple(observation.obs_id for observation in prepared) == ("obs-1", "obs-2")
+
+
+def test_build_rxte_event_provenance_records_config_and_environment(
+    tmp_path: Path,
+) -> None:
+    raw_path = tmp_path / "rxte" / "10088-01-07-02"
+    raw_path.mkdir(parents=True)
+    (raw_path / "events.evt").write_bytes(b"synthetic event bytes")
+    prepared = prepare_rxte_observation(
+        _plan(raw_path=raw_path, raw_status="downloaded")
+    )
+    config = RxteIngestionConfig(
+        detector_selection=RxteDetectorSelection(pcus=(2,), layers=(1,))
+    )
+    environment = ExternalToolEnvironment(
+        variables={"HEADAS": "/opt/heasoft", "CALDB": "/caldb"},
+        tool_paths={"barycorr": "/tools/barycorr", "xtefilt": None},
+    )
+
+    provenance = build_rxte_event_provenance(
+        prepared, config=config, environment=environment
+    )
+
+    assert provenance.raw_uri == str(raw_path)
+    assert provenance.caldb_version == "/caldb"
+    assert provenance.screening_hash == config.screening_hash
+    assert provenance.barycorr_ref == "DE405"
+    assert not provenance.barycorr_applied
+    assert "HEADAS=/opt/heasoft" in provenance.software_version
+    assert "missing_tools=xtefilt" in provenance.software_version
+    assert "detector=pcu2_layer1" in provenance.notes
+    assert "raw_files=1" in provenance.notes
 
 
 def _plan(

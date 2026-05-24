@@ -9,7 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .archive_plan import RXTE_INSTRUMENT, RawObservationPlan
+from .event_products import EventProductProvenance
+from .external_tools import ExternalToolEnvironment
 from .raw_inventory import RawInventory, RawInventoryError, inventory_raw_files
+from .rxte_config import RxteIngestionConfig
 
 
 READY_RAW_STATUSES = frozenset({"downloaded", "verified"})
@@ -63,3 +66,40 @@ def prepare_rxte_observations(
     """Validate and inventory multiple RXTE observations."""
 
     return tuple(prepare_rxte_observation(plan) for plan in plans)
+
+
+def build_rxte_event_provenance(
+    prepared: RxtePreparedObservation,
+    *,
+    config: RxteIngestionConfig,
+    environment: ExternalToolEnvironment,
+) -> EventProductProvenance:
+    """Build event-product provenance before RXTE FITS parsing exists."""
+
+    software_parts = []
+    if environment.headas:
+        software_parts.append(f"HEADAS={environment.headas}")
+    if environment.tool_paths:
+        available = sorted(
+            tool for tool, path in environment.tool_paths.items() if path is not None
+        )
+        missing = sorted(environment.missing_tools)
+        if available:
+            software_parts.append("tools=" + "|".join(available))
+        if missing:
+            software_parts.append("missing_tools=" + "|".join(missing))
+
+    return EventProductProvenance(
+        raw_uri=str(prepared.plan.raw_path),
+        software_version=";".join(software_parts),
+        caldb_version=environment.caldb,
+        screening_hash=config.screening_hash,
+        barycorr_ref=config.barycenter.ephemeris
+        if config.barycenter.apply_barycenter
+        else "",
+        barycorr_applied=False,
+        notes=(
+            f"RXTE preflight only; detector={config.detector_label}; "
+            f"raw_files={prepared.n_raw_files}"
+        ),
+    )
