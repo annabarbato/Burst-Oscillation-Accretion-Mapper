@@ -21,6 +21,7 @@ This document records the Phase 0 repository structure proposal from `docs/roadm
 |-- docs/
 |   |-- architecture.md
 |   |-- environment.md
+|   |-- phase-0-status.md
 |   |-- repository-structure.md
 |   |-- roadmap.md
 |   `-- source-citation-policy.md
@@ -37,7 +38,7 @@ This document records the Phase 0 repository structure proposal from `docs/roadm
 
 ## Directory Roles
 
-- `docs/`: canonical project design, roadmap, repo conventions, and future design notes.
+- `docs/`: canonical project design, roadmap, repo conventions, phase status, and future design notes.
 - `data/manifests/`: small, tracked CSV inputs for source metadata, observation curation, validation target selection, references, and reproducibility manifests.
 - `data/`: local data area. Large raw, processed, and derived mission products must stay out of Git unless a future task explicitly adds a tiny test fixture.
 - `src/`: future Python package code. No pipeline code belongs here until the Phase 0 foundation and environment decisions are complete.
