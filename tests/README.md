@@ -6,7 +6,7 @@ Expected early test areas:
 
 - Manifest parsing and validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
-- Time-window and GTI handling.
+- Time-window and GTI handling with half-open event intervals.
 - Synthetic event fixtures with known burst envelopes.
 - Targeted oscillation-search fixtures once Phase 1 begins.
 

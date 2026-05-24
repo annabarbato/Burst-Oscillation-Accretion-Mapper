@@ -15,5 +15,6 @@ Expected Phase 1 modules should align with the conceptual interfaces in `docs/ar
 Current modules:
 
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
+- `burst_oscillation_accretion_mapper.time_intervals`: small GTI and event-window helpers for future event slicing.
 
 Do not add NICER backend code, injection/recovery code, inference models, or dashboard code before the roadmap phase is explicitly advanced.
