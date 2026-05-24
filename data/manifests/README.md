@@ -16,7 +16,7 @@ Canonical design constraints:
 - `validation_targets.csv`: small, curated RXTE MVP target list used to choose the first ObsIDs and sources for Phase 1 validation.
 - `references.csv`: tracked index of authoritative sources used by docs, manifests, and future provenance records.
 
-The current rows are source-level Phase 1 candidates only. Exact RXTE ObsIDs and MINBAR burst IDs are intentionally left blank until the next curation pass verifies observation-level targets.
+The current rows include a small observation-level RXTE/PCA validation set with exact ObsIDs and MINBAR burst IDs where available. Phase 1 should use these rows as the initial validation manifest before expanding to additional sources or NICER/XTI.
 
 ## Source Manifest Columns
 
@@ -74,7 +74,7 @@ Rules:
 
 Rules:
 
-- Phase 0 may define the schema and add candidate RXTE rows only after ObsIDs are reference-checked.
+- Phase 0 may define the schema and add selected RXTE rows after ObsIDs are reference-checked.
 - Do not add NICER/XTI rows until the roadmap advances to NICER work.
 - `event_product_uri`, `software_version`, `caldb_version`, `screening_hash`, and `barycorr_ref` remain blank until processing exists.
 - Local raw paths must point to untracked local storage; do not commit raw mission products.
@@ -141,19 +141,22 @@ Rules:
 
 ## Current Seed Status
 
-The initial high-priority validation seed contains four RXTE/PCA burst-oscillation sources:
+The Phase 0 validation seed contains five RXTE/PCA observation-level targets across four burst-oscillation sources:
 
-- 4U 1636-536 at approximately 581 Hz.
-- 4U 1728-34 at approximately 363 Hz.
-- 4U 1702-429 at approximately 330 Hz.
-- KS 1731-260 at approximately 524 Hz.
+- 4U 1636-536 ObsID `10088-01-07-02`, `MINBAR.2257`, secure 581 Hz recovery target.
+- 4U 1728-34 ObsID `10073-01-01-00`, `MINBAR.2204`, secure 363 Hz recovery target.
+- 4U 1728-34 ObsID `10073-01-02-00`, `MINBAR.2206`, expected non-detection control.
+- 4U 1702-429 ObsID `20084-02-01-00`, `MINBAR.2322`, probable near-330 Hz recovery target for Phase 1 review.
+- KS 1731-260 ObsID `30061-01-02-01`, `MINBAR.2431`, probable near-524 Hz recovery target for Phase 1 review.
 
-These rows are enough to drive the next Phase 0 task: selecting exact RXTE ObsIDs and MINBAR burst references. They are not yet enough for Phase 1 implementation because the observation-level targets are still blank.
+These rows are enough to start the Phase 1 RXTE validation MVP. The two probable recovery targets remain deliberately conservative until event-level Phase 1 checks confirm burst-specific oscillation behavior.
 
 References checked on 2026-05-24:
 
 - SIMBAD source coordinates and LMXB object types: https://simbad.u-strasbg.fr/simbad/
 - 4U 1636-536 581 Hz burst oscillation reference: https://academic.oup.com/mnras/article/383/1/387/1070628
+- 4U 1636-536 tail oscillation table: https://academic.oup.com/mnras/article/436/3/2276/1249211
 - 4U 1728-34 363 Hz RXTE burst oscillation reference: https://academic.oup.com/mnras/article/455/2/2004/1123266
 - 4U 1702-429 near-330 Hz RXTE burst oscillation reference: https://ntrs.nasa.gov/citations/19990023258
 - KS 1731-260 near-524 Hz RXTE burst oscillation reference: https://arxiv.org/abs/astro-ph/0003229
+- MINBAR web interface and burst entries: https://burst.sci.monash.edu/
