@@ -5,6 +5,7 @@ This directory is reserved for automated tests and small fixtures.
 Expected early test areas:
 
 - Configurable Poisson excess scoring, conservative interval grouping, binned morphology review, multi-cadence candidate clustering, and review summary products on synthetic light curves.
+- Conservative configured scoring of targeted oscillation-search outputs into review classes.
 - No-download archive planning for selected RXTE/PCA raw products.
 - HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.

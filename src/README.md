@@ -16,6 +16,7 @@ Current modules:
 
 - `burst_oscillation_accretion_mapper.archive_plan`: no-download RXTE raw archive planning from validation manifests.
 - `burst_oscillation_accretion_mapper.burst_detection`: configurable Poisson excess scoring, grouping of adjacent interval candidates, binned morphology review, multi-cadence review clustering, and cluster summary products for later MINBAR/catalog comparison.
+- `burst_oscillation_accretion_mapper.candidate_scoring`: conservative configured scoring of targeted oscillation-search products into secure/probable/marginal/non-detection review summaries.
 - `burst_oscillation_accretion_mapper.event_products`: in-memory event product metadata, provenance, GTI-aware slicing, and energy filtering primitives.
 - `burst_oscillation_accretion_mapper.external_tools`: read-only HEASoft/CALDB environment snapshots.
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.
