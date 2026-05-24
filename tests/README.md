@@ -13,10 +13,18 @@ Large mission data products must not be committed as fixtures. Use tiny syntheti
 
 ## Current Checks
 
-Run the Phase 0 manifest validation check with:
+Run the manifest validation check with:
 
 ```powershell
-python tests/validate_manifests.py
+python tests\validate_manifests.py
 ```
 
 The check uses only the Python standard library and validates tracked CSV schemas, required fields, references, source IDs, observation rows, RXTE-only validation scope, numeric coordinates, and expected oscillation frequencies.
+
+Run the Python test suite with:
+
+```powershell
+python -m pytest
+```
+
+The initial Phase 1 test suite is intentionally small and verifies that the package skeleton imports cleanly before RXTE-specific implementation begins.

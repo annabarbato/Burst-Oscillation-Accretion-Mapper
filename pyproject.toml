@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "burst-oscillation-accretion-mapper"
+version = "0.0.0"
+description = "Selection-function-corrected thermonuclear burst-oscillation discovery and correlation pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Burst-Oscillation Accretion Mapper contributors" },
+]
+keywords = [
+  "astronomy",
+  "burst oscillations",
+  "neutron stars",
+  "RXTE",
+  "thermonuclear bursts",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
