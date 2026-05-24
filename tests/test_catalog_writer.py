@@ -94,6 +94,7 @@ def test_write_candidate_review_round_trips_detection_and_non_detection() -> Non
             candidate_id="candidate-001",
             burst_id="burst-002",
             pipeline_version="phase1-test",
+            search_config_id="targeted",
         ),
     )
 
@@ -236,6 +237,7 @@ def test_write_candidate_review_rejects_duplicate_candidate_id() -> None:
     context = CandidateCatalogWriteContext(
         candidate_id="candidate-001",
         pipeline_version="phase1-test",
+        search_config_id="targeted",
     )
 
     write_candidate_review(connection, _probable_review(), context=context)
@@ -246,7 +248,10 @@ def test_write_candidate_review_rejects_duplicate_candidate_id() -> None:
 
 def test_write_control_review_rejects_duplicate_control_id() -> None:
     connection = sqlite3.connect(":memory:")
-    context = ControlCatalogWriteContext(pipeline_version="phase1-test")
+    context = ControlCatalogWriteContext(
+        pipeline_version="phase1-test",
+        search_config_id="targeted",
+    )
     control_review = ControlReview(
         control=_control_windows()[0],
         review=_probable_review(),
@@ -265,8 +270,17 @@ def test_candidate_catalog_write_context_requires_identity() -> None:
     with pytest.raises(CatalogWriteError, match="pipeline_version"):
         CandidateCatalogWriteContext(candidate_id="candidate", pipeline_version="")
 
+    with pytest.raises(CatalogWriteError, match="search_config_id"):
+        CandidateCatalogWriteContext(
+            candidate_id="candidate",
+            pipeline_version="phase1-test",
+        )
+
     with pytest.raises(CatalogWriteError, match="pipeline_version"):
-        ControlCatalogWriteContext(pipeline_version="")
+        ControlCatalogWriteContext(pipeline_version="", search_config_id="targeted")
+
+    with pytest.raises(CatalogWriteError, match="search_config_id"):
+        ControlCatalogWriteContext(pipeline_version="phase1-test")
 
 
 def test_candidate_catalog_row_from_review_validates_numeric_fields() -> None:
@@ -296,6 +310,7 @@ def test_candidate_catalog_row_from_review_validates_numeric_fields() -> None:
             context=CandidateCatalogWriteContext(
                 candidate_id="candidate",
                 pipeline_version="phase1-test",
+                search_config_id="targeted",
             ),
         )
 
@@ -327,6 +342,7 @@ def test_candidate_catalog_row_from_review_requires_harmonic_metadata_for_power(
             context=CandidateCatalogWriteContext(
                 candidate_id="candidate",
                 pipeline_version="phase1-test",
+                search_config_id="targeted",
             ),
         )
 

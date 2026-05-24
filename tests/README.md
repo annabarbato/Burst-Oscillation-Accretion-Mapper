@@ -19,6 +19,7 @@ Expected early test areas:
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - Targeted event-based `Z_n^2` oscillation-search, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window primitives on synthetic events.
+- Deterministic targeted-search review configuration fingerprints for catalog provenance.
 - Single-trial and nominal independent-trial corrected p-value helpers for `Z_n^2` timing products.
 - GTI-corrected single- and multi-cadence light-curve binning plus baseline estimation on synthetic events.
 - In-memory event product slicing on synthetic events.

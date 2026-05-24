@@ -41,6 +41,7 @@ class CandidateCatalogWriteContext:
     def __post_init__(self) -> None:
         _require_text(self.candidate_id, "candidate_id")
         _require_text(self.pipeline_version, "pipeline_version")
+        _require_text(self.search_config_id, "search_config_id")
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class ControlCatalogWriteContext:
 
     def __post_init__(self) -> None:
         _require_text(self.pipeline_version, "pipeline_version")
+        _require_text(self.search_config_id, "search_config_id")
 
 
 @dataclass(frozen=True)
