@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import ceil, isfinite
+from statistics import median
 
 from .event_products import EventProduct
 from .time_intervals import TimeInterval, clip_to_gti, total_duration
@@ -62,6 +63,18 @@ class LightCurve:
         )
 
 
+@dataclass(frozen=True)
+class BaselineEstimate:
+    """Rolling robust baseline estimate for a light curve."""
+
+    rates: tuple[float | None, ...]
+    reference_bin_counts: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.rates) != len(self.reference_bin_counts):
+            raise LightCurveError("Baseline columns must have matching lengths")
+
+
 def make_light_curve(
     event_product: EventProduct, *, interval: TimeInterval, bin_size: float
 ) -> LightCurve:
@@ -95,6 +108,41 @@ def make_light_curve(
         counts=tuple(counts),
         exposures=exposures,
     )
+
+
+def estimate_rolling_baseline(
+    light_curve: LightCurve,
+    *,
+    window_bins: int,
+    excluded_bins: frozenset[int] = frozenset(),
+) -> BaselineEstimate:
+    """Estimate a local persistent baseline with a rolling median.
+
+    The estimator uses finite-rate bins inside `window_bins` on either side of
+    each bin, including the current bin unless it is explicitly excluded. Bins
+    with zero exposure are ignored. This is intentionally a preprocessing
+    primitive; later burst-detection code should decide which flare or burst
+    candidates to exclude and when to recompute the baseline.
+    """
+
+    if window_bins < 1:
+        raise LightCurveError("window_bins must be at least 1")
+
+    rates = light_curve.rates
+    baselines: list[float | None] = []
+    reference_counts: list[int] = []
+    for index in range(light_curve.n_bins):
+        start = max(0, index - window_bins)
+        stop = min(light_curve.n_bins, index + window_bins + 1)
+        reference_rates = [
+            rate
+            for reference_index, rate in enumerate(rates[start:stop], start=start)
+            if reference_index not in excluded_bins and rate is not None
+        ]
+        reference_counts.append(len(reference_rates))
+        baselines.append(float(median(reference_rates)) if reference_rates else None)
+
+    return BaselineEstimate(tuple(baselines), tuple(reference_counts))
 
 
 def _make_bins(interval: TimeInterval, bin_size: float) -> tuple[TimeInterval, ...]:
