@@ -7,6 +7,7 @@ correction are implemented.
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from dataclasses import dataclass, field
 from math import isfinite
 
@@ -173,8 +174,9 @@ def _require_events_inside_gtis(
 def _indices_in_intervals(
     times: tuple[float, ...], intervals: tuple[TimeInterval, ...]
 ) -> tuple[int, ...]:
-    return tuple(
-        index
-        for index, time in enumerate(times)
-        if any(interval.contains(time) for interval in intervals)
-    )
+    indices: list[int] = []
+    for interval in intervals:
+        start_index = bisect_left(times, interval.start)
+        stop_index = bisect_left(times, interval.stop)
+        indices.extend(range(start_index, stop_index))
+    return tuple(indices)

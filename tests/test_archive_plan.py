@@ -21,11 +21,13 @@ def test_builds_rxte_archive_plan_from_curated_validation_manifest(
 ) -> None:
     index = load_phase1_manifests(MANIFEST_DIR)
 
-    plans = build_rxte_raw_archive_plan(index, raw_root=tmp_path)
+    plans = build_rxte_raw_archive_plan(index, raw_root=tmp_path, repo_root=tmp_path)
 
     assert len(plans) == 5
     assert {plan.instrument for plan in plans} == {"RXTE/PCA"}
-    assert plans[0].raw_path == tmp_path / "rxte" / "10088-01-07-02"
+    assert plans[0].raw_path == tmp_path / "data/raw/rxte/10088-01-07-02"
+    assert plans[0].raw_status == "downloaded"
+    assert plans[0].archive_uri.startswith("https://heasarc.gsfc.nasa.gov/FTP/xte/")
     assert not any(plan.raw_exists for plan in plans)
     assert not any(plan.is_ready_for_ingestion for plan in plans)
 

@@ -13,8 +13,11 @@ Expected early test areas:
 - No-download archive planning for selected RXTE/PCA raw products.
 - HEASoft/CALDB environment snapshot behavior without running mission tools.
 - Local raw-product inventory and checksum behavior.
+- HEASARC RXTE/PCA archive URL discovery and local mirroring helper behavior.
 - RXTE/PCA detector-selection and barycenter provenance configuration.
-- RXTE/PCA ingestion preflight behavior before FITS parsing.
+- RXTE/PCA ingestion preflight behavior before event-table ingestion.
+- Astropy-based local RXTE FITS event-table reading on tiny synthetic FITS fixtures.
+- RXTE TT mission-time conversion for MINBAR UTC MJD validation windows.
 - Manifest parsing and validation.
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
 - Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.

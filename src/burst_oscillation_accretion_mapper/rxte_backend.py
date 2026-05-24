@@ -1,7 +1,8 @@
 """RXTE/PCA ingestion preflight helpers for Phase 1.
 
-This module stops at local raw-product readiness. It does not parse RXTE FITS
-files, run HEASoft, apply barycenter corrections, or build event products.
+This module stops at local raw-product readiness and provenance. FITS event
+tables are read by ``rxte_fits``; HEASoft execution and barycenter correction
+remain explicit downstream steps.
 """
 
 from __future__ import annotations
@@ -74,7 +75,7 @@ def build_rxte_event_provenance(
     config: RxteIngestionConfig,
     environment: ExternalToolEnvironment,
 ) -> EventProductProvenance:
-    """Build event-product provenance before RXTE FITS parsing exists."""
+    """Build event-product provenance for local RXTE event-table ingestion."""
 
     software_parts = []
     if environment.headas:

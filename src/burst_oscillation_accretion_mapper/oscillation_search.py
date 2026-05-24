@@ -270,34 +270,11 @@ def search_event_product_targeted_z2(
             f"minimum is {config.min_photons}"
         )
 
-    powers = tuple(
-        Z2FrequencyPower(
-            frequency_hz=frequency_hz,
-            z2_power=z_n_squared(
-                selected.times,
-                frequency_hz=frequency_hz,
-                n_harmonics=config.n_harmonics,
-                reference_time=config.reference_time,
-            ),
-            leahy_power=leahy_normalized_power(
-                selected.times,
-                frequency_hz=frequency_hz,
-                reference_time=config.reference_time,
-            ),
-            n_harmonics=config.n_harmonics,
-            photon_count=selected.n_events,
-            first_harmonic_phase_rad=first_harmonic_phase(
-                selected.times,
-                frequency_hz=frequency_hz,
-                reference_time=config.reference_time,
-            ),
-            first_harmonic_fractional_rms=first_harmonic_fractional_rms(
-                selected.times,
-                frequency_hz=frequency_hz,
-                reference_time=config.reference_time,
-            ),
-        )
-        for frequency_hz in config.frequency_grid.frequencies_hz
+    powers = _frequency_powers(
+        selected.times,
+        frequencies_hz=config.frequency_grid.frequencies_hz,
+        n_harmonics=config.n_harmonics,
+        reference_time=config.reference_time,
     )
     return TargetedZ2SearchResult(
         source_id=event_product.source_id,
@@ -349,6 +326,108 @@ def search_event_product_sliding_targeted_z2(
 def _validate_frequency(frequency_hz: float) -> None:
     if not isfinite(frequency_hz) or frequency_hz <= 0:
         raise OscillationSearchError(f"Invalid frequency_hz: {frequency_hz}")
+
+
+def _frequency_powers(
+    times: tuple[float, ...],
+    *,
+    frequencies_hz: tuple[float, ...],
+    n_harmonics: int,
+    reference_time: float | None,
+) -> tuple[Z2FrequencyPower, ...]:
+    """Compute search powers, using NumPy when available for real event data."""
+
+    _validate_times(times)
+    if n_harmonics < 1:
+        raise OscillationSearchError("n_harmonics must be at least 1")
+    if reference_time is not None and not isfinite(reference_time):
+        raise OscillationSearchError("reference_time must be finite when set")
+    for frequency_hz in frequencies_hz:
+        _validate_frequency(frequency_hz)
+
+    try:
+        import numpy as np
+    except Exception:  # pragma: no cover - optional acceleration path
+        return _frequency_powers_pure_python(
+            times,
+            frequencies_hz=frequencies_hz,
+            n_harmonics=n_harmonics,
+            reference_time=reference_time,
+        )
+
+    time_zero = times[0] if reference_time is None else reference_time
+    shifted_times = np.asarray(times, dtype=float) - time_zero
+    photon_count = len(times)
+    powers: list[Z2FrequencyPower] = []
+    for frequency_hz in frequencies_hz:
+        z2_sum = 0.0
+        first_cosine_sum = 0.0
+        first_sine_sum = 0.0
+        for harmonic in range(1, n_harmonics + 1):
+            phases = 2.0 * pi * harmonic * frequency_hz * shifted_times
+            cosine_sum = float(np.cos(phases).sum())
+            sine_sum = float(np.sin(phases).sum())
+            if harmonic == 1:
+                first_cosine_sum = cosine_sum
+                first_sine_sum = sine_sum
+            z2_sum += cosine_sum * cosine_sum + sine_sum * sine_sum
+
+        first_harmonic_power = first_cosine_sum**2 + first_sine_sum**2
+        powers.append(
+            Z2FrequencyPower(
+                frequency_hz=frequency_hz,
+                z2_power=2.0 * z2_sum / photon_count,
+                leahy_power=2.0 * first_harmonic_power / photon_count,
+                n_harmonics=n_harmonics,
+                photon_count=photon_count,
+                first_harmonic_phase_rad=atan2(
+                    first_sine_sum,
+                    first_cosine_sum,
+                ),
+                first_harmonic_fractional_rms=(
+                    sqrt(2.0) * sqrt(first_harmonic_power) / photon_count
+                ),
+            )
+        )
+    return tuple(powers)
+
+
+def _frequency_powers_pure_python(
+    times: tuple[float, ...],
+    *,
+    frequencies_hz: tuple[float, ...],
+    n_harmonics: int,
+    reference_time: float | None,
+) -> tuple[Z2FrequencyPower, ...]:
+    return tuple(
+        Z2FrequencyPower(
+            frequency_hz=frequency_hz,
+            z2_power=z_n_squared(
+                times,
+                frequency_hz=frequency_hz,
+                n_harmonics=n_harmonics,
+                reference_time=reference_time,
+            ),
+            leahy_power=leahy_normalized_power(
+                times,
+                frequency_hz=frequency_hz,
+                reference_time=reference_time,
+            ),
+            n_harmonics=n_harmonics,
+            photon_count=len(times),
+            first_harmonic_phase_rad=first_harmonic_phase(
+                times,
+                frequency_hz=frequency_hz,
+                reference_time=reference_time,
+            ),
+            first_harmonic_fractional_rms=first_harmonic_fractional_rms(
+                times,
+                frequency_hz=frequency_hz,
+                reference_time=reference_time,
+            ),
+        )
+        for frequency_hz in frequencies_hz
+    )
 
 
 def _validate_times(times: tuple[float, ...]) -> None:

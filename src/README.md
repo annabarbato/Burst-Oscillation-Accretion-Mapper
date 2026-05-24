@@ -26,11 +26,14 @@ Current modules:
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
 - `burst_oscillation_accretion_mapper.minbar_matching`: timing-window matching, deterministic detected-window construction, observation-level reports, and recall/review-burden metrics for MINBAR validation targets.
-- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window searches around known source frequencies for Phase 1 validation windows.
+- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives, Leahy diagnostics, first-harmonic phase/amplitude estimates, optional NumPy acceleration, and sliding-window searches around known source frequencies for Phase 1 validation windows.
 - `burst_oscillation_accretion_mapper.phase1_validation`: Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
+- `burst_oscillation_accretion_mapper.rxte_archive`: HEASARC RXTE/PCA archive URL discovery and local mirroring helpers for selected Phase 1 products.
 - `burst_oscillation_accretion_mapper.rxte_config`: RXTE/PCA detector-selection and barycenter provenance configuration.
-- `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks before FITS parsing exists.
+- `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks and provenance assembly before event-table ingestion.
+- `burst_oscillation_accretion_mapper.rxte_fits`: Astropy-based local RXTE FITS event-table reader for products with explicit event-time columns.
+- `burst_oscillation_accretion_mapper.rxte_time`: RXTE TT mission-time conversion helpers for MINBAR UTC MJD validation windows.
 - `burst_oscillation_accretion_mapper.search_configs`: deterministic targeted-search review configuration fingerprints for Phase 1 catalog provenance.
 - `burst_oscillation_accretion_mapper.synthetic_controls`: synthetic Poisson null-control products with event-rate envelopes for Phase 1 false-alarm review.
 - `burst_oscillation_accretion_mapper.timing_significance`: single-trial and nominal independent-trial corrected p-value helpers for Phase 1 `Z_n^2` products.

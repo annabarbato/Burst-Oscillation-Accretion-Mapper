@@ -25,6 +25,10 @@ dependencies = []
 dev = [
   "pytest>=8",
 ]
+science = [
+  "astropy>=7",
+  "numpy>=1.26",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
