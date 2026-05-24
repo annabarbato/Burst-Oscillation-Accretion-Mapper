@@ -67,6 +67,20 @@ class TargetedZ2SearchConfig:
 
 
 @dataclass(frozen=True)
+class SlidingWindowConfig:
+    """Configuration for sliding targeted-search windows."""
+
+    window_size_s: float
+    step_s: float
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.window_size_s) or self.window_size_s <= 0:
+            raise OscillationSearchError(f"Invalid window_size_s: {self.window_size_s}")
+        if not isfinite(self.step_s) or self.step_s <= 0:
+            raise OscillationSearchError(f"Invalid step_s: {self.step_s}")
+
+
+@dataclass(frozen=True)
 class Z2FrequencyPower:
     """`Z_n^2` power measured at one trial frequency."""
 
@@ -111,6 +125,51 @@ class TargetedZ2SearchResult:
         return self.best_power.z2_power
 
 
+@dataclass(frozen=True)
+class SlidingTargetedZ2SearchResult:
+    """Targeted `Z_n^2` search results over multiple sliding windows."""
+
+    source_id: str
+    obs_id: str
+    instrument: str
+    search_mode: str
+    window_results: tuple[TargetedZ2SearchResult, ...]
+    skipped_windows: tuple[TimeInterval, ...]
+
+    @property
+    def searched_window_count(self) -> int:
+        return len(self.window_results)
+
+    @property
+    def skipped_window_count(self) -> int:
+        return len(self.skipped_windows)
+
+    @property
+    def trial_count(self) -> int:
+        return sum(len(result.powers) for result in self.window_results)
+
+    @property
+    def best_result(self) -> TargetedZ2SearchResult:
+        if not self.window_results:
+            raise OscillationSearchError("Cannot choose a best result from no windows")
+        return max(
+            self.window_results,
+            key=lambda result: (
+                result.best_z2_power,
+                -result.window.start,
+                -result.best_frequency_hz,
+            ),
+        )
+
+    @property
+    def best_frequency_hz(self) -> float:
+        return self.best_result.best_frequency_hz
+
+    @property
+    def best_z2_power(self) -> float:
+        return self.best_result.best_z2_power
+
+
 def z_n_squared(
     times: tuple[float, ...],
     *,
@@ -139,6 +198,24 @@ def z_n_squared(
         power_sum += cosine_sum * cosine_sum + sine_sum * sine_sum
 
     return 2.0 * power_sum / len(times)
+
+
+def make_sliding_windows(
+    interval: TimeInterval, *, config: SlidingWindowConfig
+) -> tuple[TimeInterval, ...]:
+    """Create full sliding windows inside a requested search interval."""
+
+    if interval.duration < config.window_size_s:
+        return ()
+
+    n_steps = floor((interval.duration - config.window_size_s) / config.step_s) + 1
+    return tuple(
+        TimeInterval(
+            round(interval.start + index * config.step_s, 12),
+            round(interval.start + index * config.step_s + config.window_size_s, 12),
+        )
+        for index in range(n_steps)
+    )
 
 
 def search_event_product_targeted_z2(
@@ -178,6 +255,42 @@ def search_event_product_targeted_z2(
         effective_exposure_s=selected.exposure_s,
         search_mode=TARGETED_SEARCH_MODE,
         powers=powers,
+    )
+
+
+def search_event_product_sliding_targeted_z2(
+    event_product: EventProduct,
+    *,
+    interval: TimeInterval,
+    window_config: SlidingWindowConfig,
+    search_config: TargetedZ2SearchConfig,
+) -> SlidingTargetedZ2SearchResult:
+    """Run targeted known-frequency searches over sliding event windows."""
+
+    windows = make_sliding_windows(interval, config=window_config)
+    window_results: list[TargetedZ2SearchResult] = []
+    skipped_windows: list[TimeInterval] = []
+
+    for window in windows:
+        selected = event_product.select_time_interval(window)
+        if selected.n_events < search_config.min_photons:
+            skipped_windows.append(window)
+            continue
+        window_results.append(
+            search_event_product_targeted_z2(
+                event_product,
+                window=window,
+                config=search_config,
+            )
+        )
+
+    return SlidingTargetedZ2SearchResult(
+        source_id=event_product.source_id,
+        obs_id=event_product.obs_id,
+        instrument=event_product.instrument,
+        search_mode=TARGETED_SEARCH_MODE,
+        window_results=tuple(window_results),
+        skipped_windows=tuple(skipped_windows),
     )
 
 

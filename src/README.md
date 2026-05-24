@@ -21,7 +21,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.lightcurves`: GTI-corrected single- and multi-cadence event binning plus rolling baseline helpers for early burst-detection work.
 - `burst_oscillation_accretion_mapper.manifests`: typed loader for the curated RXTE/PCA source, observation, and validation-target manifests.
 - `burst_oscillation_accretion_mapper.minbar_matching`: timing-window matching, deterministic detected-window construction, observation-level reports, and recall/review-burden metrics for MINBAR validation targets.
-- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives around known source frequencies for Phase 1 validation windows.
+- `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives and sliding-window searches around known source frequencies for Phase 1 validation windows.
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
 - `burst_oscillation_accretion_mapper.rxte_config`: RXTE/PCA detector-selection and barycenter provenance configuration.
 - `burst_oscillation_accretion_mapper.rxte_backend`: RXTE/PCA local raw-product preflight checks before FITS parsing exists.

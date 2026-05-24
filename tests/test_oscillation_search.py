@@ -4,8 +4,11 @@ from burst_oscillation_accretion_mapper.event_products import EventProduct
 from burst_oscillation_accretion_mapper.oscillation_search import (
     TARGETED_SEARCH_MODE,
     OscillationSearchError,
+    SlidingWindowConfig,
     TargetedFrequencyGrid,
     TargetedZ2SearchConfig,
+    make_sliding_windows,
+    search_event_product_sliding_targeted_z2,
     search_event_product_targeted_z2,
     z_n_squared,
 )
@@ -153,6 +156,145 @@ def test_targeted_z2_search_config_validates_inputs() -> None:
 
     with pytest.raises(OscillationSearchError, match="min_photons"):
         TargetedZ2SearchConfig(frequency_grid=grid, min_photons=0)
+
+
+def test_make_sliding_windows_returns_full_windows_inside_interval() -> None:
+    windows = make_sliding_windows(
+        TimeInterval(0.0, 2.0),
+        config=SlidingWindowConfig(window_size_s=1.0, step_s=0.5),
+    )
+
+    assert windows == (
+        TimeInterval(0.0, 1.0),
+        TimeInterval(0.5, 1.5),
+        TimeInterval(1.0, 2.0),
+    )
+
+
+def test_make_sliding_windows_returns_empty_when_interval_is_too_short() -> None:
+    windows = make_sliding_windows(
+        TimeInterval(0.0, 0.5),
+        config=SlidingWindowConfig(window_size_s=1.0, step_s=0.5),
+    )
+
+    assert windows == ()
+
+
+def test_sliding_window_config_validates_inputs() -> None:
+    with pytest.raises(OscillationSearchError, match="window_size_s"):
+        SlidingWindowConfig(window_size_s=0.0, step_s=0.5)
+
+    with pytest.raises(OscillationSearchError, match="step_s"):
+        SlidingWindowConfig(window_size_s=1.0, step_s=0.0)
+
+
+def test_search_event_product_sliding_targeted_z2_reports_best_window() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(
+            0.0,
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+            0.9,
+            1.0,
+            1.2,
+            1.4,
+            1.6,
+            1.8,
+        ),
+        gtis=(TimeInterval(0.0, 2.0),),
+    )
+    search_config = TargetedZ2SearchConfig(
+        frequency_grid=TargetedFrequencyGrid(
+            center_hz=10.0,
+            half_width_hz=1.0,
+            step_hz=1.0,
+        ),
+        min_photons=3,
+    )
+
+    result = search_event_product_sliding_targeted_z2(
+        product,
+        interval=TimeInterval(0.0, 2.0),
+        window_config=SlidingWindowConfig(window_size_s=1.0, step_s=1.0),
+        search_config=search_config,
+    )
+
+    assert result.source_id == "source"
+    assert result.obs_id == "obs"
+    assert result.instrument == "RXTE/PCA"
+    assert result.search_mode == TARGETED_SEARCH_MODE
+    assert result.searched_window_count == 2
+    assert result.skipped_window_count == 0
+    assert result.trial_count == 6
+    assert result.best_result.window == TimeInterval(0.0, 1.0)
+    assert result.best_frequency_hz == 10.0
+    assert result.best_z2_power == pytest.approx(20.0)
+
+
+def test_search_event_product_sliding_targeted_z2_skips_low_photon_windows() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(0.0, 0.1, 0.2),
+        gtis=(TimeInterval(0.0, 3.0),),
+    )
+    search_config = TargetedZ2SearchConfig(
+        frequency_grid=TargetedFrequencyGrid(
+            center_hz=10.0,
+            half_width_hz=0.0,
+            step_hz=1.0,
+        ),
+        min_photons=2,
+    )
+
+    result = search_event_product_sliding_targeted_z2(
+        product,
+        interval=TimeInterval(0.0, 3.0),
+        window_config=SlidingWindowConfig(window_size_s=1.0, step_s=1.0),
+        search_config=search_config,
+    )
+
+    assert result.searched_window_count == 1
+    assert result.skipped_windows == (
+        TimeInterval(1.0, 2.0),
+        TimeInterval(2.0, 3.0),
+    )
+
+
+def test_sliding_targeted_z2_result_rejects_best_result_without_windows() -> None:
+    product = EventProduct(
+        source_id="source",
+        obs_id="obs",
+        instrument="RXTE/PCA",
+        times=(),
+        gtis=(TimeInterval(0.0, 1.0),),
+    )
+    result = search_event_product_sliding_targeted_z2(
+        product,
+        interval=TimeInterval(0.0, 1.0),
+        window_config=SlidingWindowConfig(window_size_s=1.0, step_s=1.0),
+        search_config=TargetedZ2SearchConfig(
+            frequency_grid=TargetedFrequencyGrid(
+                center_hz=10.0,
+                half_width_hz=0.0,
+                step_hz=1.0,
+            ),
+            min_photons=1,
+        ),
+    )
+
+    with pytest.raises(OscillationSearchError, match="no windows"):
+        _ = result.best_result
 
 
 def _phase_aligned_product() -> EventProduct:
