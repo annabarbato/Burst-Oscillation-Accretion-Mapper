@@ -8,11 +8,15 @@ from burst_oscillation_accretion_mapper.candidate_scoring import (
     OscillationCandidateReview,
 )
 from burst_oscillation_accretion_mapper.control_intervals import (
+    NEIGHBORING_POST_BURST_CONTROL,
+    NEIGHBORING_PRE_BURST_CONTROL,
     POST_BURST_CONTROL,
     PRE_BURST_CONTROL,
     ControlIntervalError,
     ControlReview,
+    NeighboringControlWindowConfig,
     ControlWindowConfig,
+    build_neighboring_non_burst_control_windows,
     build_pre_post_control_windows,
     summarize_control_reviews,
 )
@@ -88,6 +92,94 @@ def test_build_pre_post_control_windows_omits_uncovered_requests() -> None:
     assert controls[0].interval == TimeInterval(110.0, 120.0)
 
 
+def test_build_neighboring_non_burst_control_windows_excludes_known_bursts() -> None:
+    controls = build_neighboring_non_burst_control_windows(
+        burst_window=TimeInterval(100.0, 110.0),
+        good_time_intervals=(TimeInterval(0.0, 200.0),),
+        excluded_intervals=(
+            TimeInterval(80.0, 90.0),
+            TimeInterval(120.0, 125.0),
+        ),
+        config=NeighboringControlWindowConfig(
+            window_duration_s=30.0,
+            max_windows_before=1,
+            max_windows_after=1,
+        ),
+        burst_id="burst-003",
+    )
+
+    assert [control.control_id for control in controls] == [
+        "burst-003_neighboring_non_burst_before_001",
+        "burst-003_neighboring_non_burst_before_002",
+        "burst-003_neighboring_non_burst_after_001",
+        "burst-003_neighboring_non_burst_after_002",
+    ]
+    assert [control.kind for control in controls] == [
+        NEIGHBORING_PRE_BURST_CONTROL,
+        NEIGHBORING_PRE_BURST_CONTROL,
+        NEIGHBORING_POST_BURST_CONTROL,
+        NEIGHBORING_POST_BURST_CONTROL,
+    ]
+    assert [control.interval for control in controls] == [
+        TimeInterval(70.0, 80.0),
+        TimeInterval(90.0, 100.0),
+        TimeInterval(110.0, 120.0),
+        TimeInterval(125.0, 140.0),
+    ]
+    assert [control.requested_interval for control in controls] == [
+        TimeInterval(70.0, 100.0),
+        TimeInterval(70.0, 100.0),
+        TimeInterval(110.0, 140.0),
+        TimeInterval(110.0, 140.0),
+    ]
+
+
+def test_build_neighboring_non_burst_control_windows_uses_multiple_neighbors_and_gtis() -> None:
+    controls = build_neighboring_non_burst_control_windows(
+        burst_window=TimeInterval(100.0, 110.0),
+        good_time_intervals=(
+            TimeInterval(45.0, 95.0),
+            TimeInterval(115.0, 170.0),
+        ),
+        excluded_intervals=(),
+        config=NeighboringControlWindowConfig(
+            window_duration_s=20.0,
+            max_windows_before=2,
+            max_windows_after=2,
+            gap_s=5.0,
+        ),
+        burst_id="burst-004",
+    )
+
+    assert [control.interval for control in controls] == [
+        TimeInterval(75.0, 95.0),
+        TimeInterval(55.0, 75.0),
+        TimeInterval(115.0, 135.0),
+        TimeInterval(135.0, 155.0),
+    ]
+    assert [control.kind for control in controls] == [
+        NEIGHBORING_PRE_BURST_CONTROL,
+        NEIGHBORING_PRE_BURST_CONTROL,
+        NEIGHBORING_POST_BURST_CONTROL,
+        NEIGHBORING_POST_BURST_CONTROL,
+    ]
+
+
+def test_build_neighboring_non_burst_control_windows_omits_fully_excluded_requests() -> None:
+    controls = build_neighboring_non_burst_control_windows(
+        burst_window=TimeInterval(100.0, 110.0),
+        good_time_intervals=(TimeInterval(0.0, 200.0),),
+        excluded_intervals=(TimeInterval(70.0, 100.0),),
+        config=NeighboringControlWindowConfig(
+            window_duration_s=30.0,
+            max_windows_before=1,
+            max_windows_after=0,
+        ),
+    )
+
+    assert controls == ()
+
+
 def test_control_window_config_validates_inputs() -> None:
     with pytest.raises(ControlIntervalError, match="pre_duration_s"):
         ControlWindowConfig(pre_duration_s=-1.0, post_duration_s=10.0)
@@ -101,6 +193,24 @@ def test_control_window_config_validates_inputs() -> None:
 
     with pytest.raises(ControlIntervalError, match="At least one"):
         ControlWindowConfig(pre_duration_s=0.0, post_duration_s=0.0)
+
+
+def test_neighboring_control_window_config_validates_inputs() -> None:
+    with pytest.raises(ControlIntervalError, match="window_duration_s"):
+        NeighboringControlWindowConfig(window_duration_s=0.0)
+
+    with pytest.raises(ControlIntervalError, match="max_windows_before"):
+        NeighboringControlWindowConfig(
+            window_duration_s=10.0,
+            max_windows_before=-1,
+        )
+
+    with pytest.raises(ControlIntervalError, match="At least one"):
+        NeighboringControlWindowConfig(
+            window_duration_s=10.0,
+            max_windows_before=0,
+            max_windows_after=0,
+        )
 
 
 def test_summarize_control_reviews_counts_detection_like_reviews() -> None:

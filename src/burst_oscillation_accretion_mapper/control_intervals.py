@@ -1,8 +1,9 @@
 """Control-window helpers for Phase 1 false-alarm checks.
 
-This module creates deterministic pre-burst and post-burst control windows and
-summarizes scored control reviews. It does not generate synthetic Poisson
-envelopes, perform trials correction, or make population-level claims.
+This module creates deterministic pre-burst, post-burst, and neighboring
+non-burst control windows and summarizes scored control reviews. It does not
+generate synthetic Poisson envelopes, perform trials correction, or make
+population-level claims.
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ from .time_intervals import TimeInterval, clip_to_gti
 
 PRE_BURST_CONTROL = "pre_burst"
 POST_BURST_CONTROL = "post_burst"
+NEIGHBORING_PRE_BURST_CONTROL = "neighboring_non_burst_before"
+NEIGHBORING_POST_BURST_CONTROL = "neighboring_non_burst_after"
 
 
 class ControlIntervalError(ValueError):
@@ -45,6 +48,32 @@ class ControlWindowConfig:
         if self.pre_duration_s == 0 and self.post_duration_s == 0:
             raise ControlIntervalError(
                 "At least one control duration must be greater than zero"
+            )
+
+
+@dataclass(frozen=True)
+class NeighboringControlWindowConfig:
+    """Configuration for neighboring non-burst control windows."""
+
+    window_duration_s: float
+    max_windows_before: int = 1
+    max_windows_after: int = 1
+    gap_s: float = 0.0
+
+    def __post_init__(self) -> None:
+        _require_positive(self.window_duration_s, "window_duration_s")
+        _require_non_negative_integer(
+            self.max_windows_before,
+            "max_windows_before",
+        )
+        _require_non_negative_integer(
+            self.max_windows_after,
+            "max_windows_after",
+        )
+        _require_non_negative(self.gap_s, "gap_s")
+        if self.max_windows_before == 0 and self.max_windows_after == 0:
+            raise ControlIntervalError(
+                "At least one neighboring control window must be requested"
             )
 
 
@@ -136,6 +165,49 @@ def build_pre_post_control_windows(
     return tuple(controls)
 
 
+def build_neighboring_non_burst_control_windows(
+    *,
+    burst_window: TimeInterval,
+    good_time_intervals: tuple[TimeInterval, ...],
+    excluded_intervals: tuple[TimeInterval, ...],
+    config: NeighboringControlWindowConfig,
+    burst_id: str = "",
+) -> tuple[ControlWindow, ...]:
+    """Build neighboring controls clipped to GTIs and excluding burst windows."""
+
+    excluded = tuple(excluded_intervals) + (burst_window,)
+    requests = []
+    for index in range(1, config.max_windows_before + 1):
+        stop = burst_window.start - config.gap_s - (index - 1) * config.window_duration_s
+        start = stop - config.window_duration_s
+        requests.append((NEIGHBORING_PRE_BURST_CONTROL, TimeInterval(start, stop)))
+    for index in range(1, config.max_windows_after + 1):
+        start = burst_window.stop + config.gap_s + (index - 1) * config.window_duration_s
+        stop = start + config.window_duration_s
+        requests.append((NEIGHBORING_POST_BURST_CONTROL, TimeInterval(start, stop)))
+
+    controls: list[ControlWindow] = []
+    kind_counts: dict[str, int] = {}
+    for kind, requested in requests:
+        clipped_intervals = tuple(
+            available
+            for clipped in clip_to_gti(requested, good_time_intervals)
+            for available in _subtract_intervals(clipped, excluded)
+        )
+        for clipped in clipped_intervals:
+            kind_counts[kind] = kind_counts.get(kind, 0) + 1
+            controls.append(
+                ControlWindow(
+                    control_id=_control_id(kind, burst_id, kind_counts[kind]),
+                    kind=kind,
+                    interval=clipped,
+                    requested_interval=requested,
+                    burst_id=burst_id,
+                )
+            )
+    return tuple(controls)
+
+
 def summarize_control_reviews(
     control_reviews: tuple[ControlReview, ...],
 ) -> ControlFalseAlarmSummary:
@@ -169,6 +241,41 @@ def _control_id(kind: str, burst_id: str, index: int) -> str:
     return f"{prefix}_{kind}_{index:03d}"
 
 
+def _subtract_intervals(
+    interval: TimeInterval,
+    excluded_intervals: tuple[TimeInterval, ...],
+) -> tuple[TimeInterval, ...]:
+    available = (interval,)
+    for excluded in sorted(excluded_intervals):
+        next_available: list[TimeInterval] = []
+        for candidate in available:
+            if not candidate.overlaps(excluded):
+                next_available.append(candidate)
+                continue
+            if candidate.start < excluded.start:
+                next_available.append(
+                    TimeInterval(candidate.start, min(candidate.stop, excluded.start))
+                )
+            if excluded.stop < candidate.stop:
+                next_available.append(
+                    TimeInterval(max(candidate.start, excluded.stop), candidate.stop)
+                )
+        available = tuple(next_available)
+        if not available:
+            break
+    return available
+
+
 def _require_non_negative(value: float, field: str) -> None:
     if not isfinite(value) or value < 0:
         raise ControlIntervalError(f"{field} must be finite and non-negative")
+
+
+def _require_positive(value: float, field: str) -> None:
+    if not isfinite(value) or value <= 0:
+        raise ControlIntervalError(f"{field} must be finite and positive")
+
+
+def _require_non_negative_integer(value: int, field: str) -> None:
+    if not isinstance(value, int) or value < 0:
+        raise ControlIntervalError(f"{field} must be a non-negative integer")
