@@ -139,24 +139,24 @@ Rules:
 6. Record missing but important references in `notes`; do not guess.
 7. Run `python tests/validate_manifests.py` after manifest edits.
 
-## Current Seed Status
+## Current Validation Status
 
-The Phase 0 validation seed contains five RXTE/PCA observation-level targets across four burst-oscillation sources:
+The current RXTE/PCA validation set contains five observation-level targets across four burst-oscillation sources:
 
-- 4U 1636-536 ObsID `10088-01-07-02`, `MINBAR.2257`, secure 581 Hz recovery target.
-- 4U 1728-34 ObsID `10073-01-01-00`, `MINBAR.2204`, secure 363 Hz recovery target.
-- 4U 1728-34 ObsID `10073-01-02-00`, `MINBAR.2206`, expected non-detection control.
-- 4U 1702-429 ObsID `20084-02-01-00`, `MINBAR.2322`, probable near-330 Hz recovery target for Phase 1 review.
-- KS 1731-260 ObsID `30061-01-02-01`, `MINBAR.2431`, probable near-524 Hz recovery target for Phase 1 review.
+- 4U 1636-536 ObsID `10088-01-07-02`, `MINBAR.2257`, secure 581 Hz recovery target: `minbar_entry_2257`, `bo_4u_1636_536_581hz`, `bo_4u_1636_536_tail_osc_table`.
+- 4U 1728-34 ObsID `10073-01-01-000`, `MINBAR.2204`, secure 363 Hz recovery target: `minbar_entry_2204`, `bo_4u_1728_34_363hz`.
+- 4U 1728-34 ObsID `10073-01-02-000`, `MINBAR.2206`, expected non-detection control: `minbar_entry_2206`, `bo_4u_1728_34_363hz`.
+- 4U 1702-429 ObsID `20084-02-01-000`, `MINBAR.2322`, probable near-330 Hz recovery target for Phase 1 review: `minbar_entry_2322`, `bo_4u_1702_429_330hz`.
+- KS 1731-260 ObsID `30061-01-02-01`, `MINBAR.2431`, probable near-524 Hz recovery target for Phase 1 review: `minbar_entry_2431`, `bo_ks_1731_260_524hz`.
 
-These rows are enough to start the Phase 1 RXTE validation MVP. The two probable recovery targets remain deliberately conservative until event-level Phase 1 checks confirm burst-specific oscillation behavior.
+These rows supported the Phase 1 strict closeout. The local validation output remains ignored under `data/products/phase1_real_validation/`, while the source, observation, validation-target, and reference rows remain tracked here.
 
-References checked on 2026-05-24:
+Reference rows checked on 2026-05-24:
 
-- SIMBAD source coordinates and LMXB object types: https://simbad.u-strasbg.fr/simbad/
-- 4U 1636-536 581 Hz burst oscillation reference: https://academic.oup.com/mnras/article/383/1/387/1070628
-- 4U 1636-536 tail oscillation table: https://academic.oup.com/mnras/article/436/3/2276/1249211
-- 4U 1728-34 363 Hz RXTE burst oscillation reference: https://academic.oup.com/mnras/article/455/2/2004/1123266
-- 4U 1702-429 near-330 Hz RXTE burst oscillation reference: https://ntrs.nasa.gov/citations/19990023258
-- KS 1731-260 near-524 Hz RXTE burst oscillation reference: https://arxiv.org/abs/astro-ph/0003229
-- MINBAR web interface and burst entries: https://burst.sci.monash.edu/
+- SIMBAD source coordinates and LMXB object types: `simbad`.
+- 4U 1636-536 581 Hz burst oscillation reference: `bo_4u_1636_536_581hz`.
+- 4U 1636-536 tail oscillation table: `bo_4u_1636_536_tail_osc_table`.
+- 4U 1728-34 363 Hz RXTE burst oscillation reference: `bo_4u_1728_34_363hz`.
+- 4U 1702-429 near-330 Hz RXTE burst oscillation reference: `bo_4u_1702_429_330hz`.
+- KS 1731-260 near-524 Hz RXTE burst oscillation reference: `bo_ks_1731_260_524hz`.
+- MINBAR web interface and selected burst entries: `minbar_web_interface`, `minbar_entry_2257`, `minbar_entry_2204`, `minbar_entry_2206`, `minbar_entry_2322`, and `minbar_entry_2431`.

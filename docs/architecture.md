@@ -639,12 +639,16 @@ The dashboard is not part of the scientific core until RXTE validation and selec
 
 ## Reference Notes
 
-Claims in this document were checked on 2026-05-24 against these sources:
+Claims in this document were checked on 2026-05-24 against sources tracked in
+`data/manifests/references.csv`:
 
-- NICER current status and mission page: https://heasarc.gsfc.nasa.gov/docs/nicer/
-- NASA NICER status updates: https://www.nasa.gov/missions/station/nicer-status-updates/
-- NICER instrument specs: https://heasarc.gsfc.nasa.gov/docs/heasarc/missions/nicer.html
-- MINBAR paper: https://arxiv.org/abs/2003.00685
-- MINBAR home: https://burst.sci.monash.edu/wiki/index.php?n=MINBAR.Home
-- RXTE/PCA specs: https://heasarc.gsfc.nasa.gov/docs/xte/PCA.html
-- Stingray documentation: https://docs.stingray.science/en/stable/
+- `nicer_heasarc_status`: NICER current status and mission page, https://heasarc.gsfc.nasa.gov/docs/nicer/
+- `nasa_nicer_status_updates`: NASA NICER status updates, https://www.nasa.gov/missions/station/nicer-status-updates/
+- `nicer_instrument_heasarc`: NICER instrument specs, https://heasarc.gsfc.nasa.gov/docs/heasarc/missions/nicer.html
+- `nicer_analysis_docs`: NICERDAS and NICER analysis documentation, https://heasarc.gsfc.nasa.gov/docs/nicer/nicer_analysis.html
+- `rxte_pca_heasarc`: RXTE/PCA specs, https://heasarc.gsfc.nasa.gov/docs/xte/PCA.html
+- `minbar_paper`: MINBAR paper, https://arxiv.org/abs/2003.00685
+- `minbar_home`: MINBAR home, https://burst.sci.monash.edu/wiki/index.php?n=MINBAR.Home
+- `stingray_docs`: Stingray documentation, https://docs.stingray.science/en/stable/
+- `heasoft_docs`: HEASoft mission-tool documentation, https://heasarc.gsfc.nasa.gov/lheasoft/index.html
+- `caldb_docs`: HEASARC CALDB documentation, https://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/caldb_doc.html

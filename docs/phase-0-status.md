@@ -25,9 +25,9 @@ This checklist tracks the current Phase 0 state against `docs/roadmap.md`. It is
 | Role | Source | ObsID | MINBAR burst | Expected signal | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | Secure recovery | 4U 1636-536 | `10088-01-07-02` | `MINBAR.2257` | 581 Hz detection | `minbar_entry_2257`; `bo_4u_1636_536_tail_osc_table` |
-| Secure recovery | 4U 1728-34 | `10073-01-01-00` | `MINBAR.2204` | 363 Hz detection | `minbar_entry_2204`; `bo_4u_1728_34_363hz` |
-| Non-detection control | 4U 1728-34 | `10073-01-02-00` | `MINBAR.2206` | Non-detection | `minbar_entry_2206`; `bo_4u_1728_34_363hz` |
-| Probable recovery | 4U 1702-429 | `20084-02-01-00` | `MINBAR.2322` | Near-330 Hz source target | `minbar_entry_2322`; `bo_4u_1702_429_330hz` |
+| Secure recovery | 4U 1728-34 | `10073-01-01-000` | `MINBAR.2204` | 363 Hz detection | `minbar_entry_2204`; `bo_4u_1728_34_363hz` |
+| Non-detection control | 4U 1728-34 | `10073-01-02-000` | `MINBAR.2206` | Non-detection | `minbar_entry_2206`; `bo_4u_1728_34_363hz` |
+| Probable recovery | 4U 1702-429 | `20084-02-01-000` | `MINBAR.2322` | Near-330 Hz source target | `minbar_entry_2322`; `bo_4u_1702_429_330hz` |
 | Probable recovery | KS 1731-260 | `30061-01-02-01` | `MINBAR.2431` | Near-524 Hz source target | `minbar_entry_2431`; `bo_ks_1731_260_524hz` |
 
 The two probable recovery rows are intentionally not promoted to secure detections in Phase 0. They are observation-level targets for Phase 1 review against event data and literature details.
