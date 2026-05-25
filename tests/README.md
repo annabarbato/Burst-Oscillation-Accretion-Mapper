@@ -25,6 +25,7 @@ Expected early test areas:
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
 - Phase 1 validation recovery statuses for probable known detections, expected non-detection review cases, p-values, and control-FAP fields.
 - Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.
+- Phase 2 injection/recovery product contracts, hash-linked configuration fixtures, and sensitivity-summary validation.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - Targeted event-based `Z_n^2` oscillation-search, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window primitives on synthetic events.
 - Deterministic targeted-search review configuration fingerprints for catalog provenance.
@@ -54,4 +55,4 @@ Run the Python test suite with:
 python -m pytest
 ```
 
-The Phase 1 suite now covers the local RXTE validation skeleton and strict closeout guardrails. Large external mission products remain ignored; the real-data runner documents those outputs under `data/products/phase1_real_validation/`.
+The suite now covers the local RXTE validation skeleton, strict Phase 1 closeout guardrails, and the first Phase 2 injection/recovery contract fixtures. Large external mission products remain ignored; the real-data runner documents those outputs under `data/products/phase1_real_validation/`.

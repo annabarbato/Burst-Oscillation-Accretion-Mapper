@@ -1,7 +1,8 @@
 """Burst-Oscillation Accretion Mapper package.
 
-The package is intentionally skeletal at the start of Phase 1. Public science
-APIs should wait until the RXTE validation MVP has stable module boundaries.
+The package keeps roadmap-aligned implementation modules behind internal
+boundaries. Public science APIs should wait until the RXTE validation and
+selection-function loops have stable product contracts.
 """
 
 from ._version import __version__

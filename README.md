@@ -10,7 +10,9 @@ Phase 0 is closed. The repository contains the architecture, roadmap, environmen
 
 Phase 1 is strictly closed out for the selected RXTE/PCA validation set. The repository now includes RXTE event/FITS and SingleBit binned readers, real orbit-file barycentric correction through HEASoft `barycorr`, explicit GoodXenon pairing status, targeted `Z_1^2` search, conservative candidate scoring, pre/post and neighboring controls, synthetic Poisson null controls, SQLite/JSON validation output, and a strict validation gate.
 
-The Phase 1 closeout run recovered all five selected MINBAR burst windows, recovered the two strongest known-signal validation targets, kept the expected MINBAR.2206 non-detection as marginal review rather than an accepted detection, and produced no secure or probable controls across the expanded control set. Binary orbital correction remains gated on curated source ephemerides. Phase 2 should add injection/recovery sensitivity curves and amplitude upper limits before any population or accretion-state correlation claims.
+The Phase 1 closeout run recovered all five selected MINBAR burst windows, recovered the two strongest known-signal validation targets, kept the expected MINBAR.2206 non-detection as marginal review rather than an accepted detection, and produced no secure or probable controls across the expanded control set. Binary orbital correction remains gated on curated source ephemerides.
+
+Phase 2 has started with the injection/recovery product contract and tiny schema fixtures. It should add sensitivity curves and amplitude upper limits before any population or accretion-state correlation claims.
 
 Source-backed project claims are indexed in [references.csv](data/manifests/references.csv). Current or operational claims carry checked dates in the status docs; local validation results are produced by [run_phase1_real_validation.py](pipelines/run_phase1_real_validation.py) and summarized in the ignored `data/products/phase1_real_validation/summary.json` artifact.
 
@@ -20,6 +22,8 @@ Source-backed project claims are indexed in [references.csv](data/manifests/refe
 - [Roadmap](docs/roadmap.md): phase-by-phase build plan and acceptance criteria.
 - [Phase 0 status](docs/phase-0-status.md): closed Phase 0 gate and selected RXTE/PCA validation set.
 - [Phase 1 status](docs/phase-1-status.md): current RXTE validation MVP implementation status and explicit deferrals.
+- [Phase 2 status](docs/phase-2-status.md): selection-function and injection/recovery progress.
+- [Phase 2 injection/recovery contract](docs/phase-2-injection-recovery-contract.md): product contract and fixture rules before broad simulation machinery.
 - [Repository structure](docs/repository-structure.md): proposed directories and ownership boundaries.
 - [Environment strategy](docs/environment.md): local scientific tooling plan and packaging path.
 - [Source citation policy](docs/source-citation-policy.md): rules for dated mission, catalog, software, and literature claims.

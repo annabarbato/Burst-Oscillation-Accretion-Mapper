@@ -1,16 +1,17 @@
 # Source Package
 
-This directory contains the Phase 1 Python package skeleton.
+This directory contains the roadmap-aligned Python package modules.
 
 The current package exports only version metadata. It does not define a stable public science API yet; implementation modules should mature behind the roadmap-aligned internal boundaries before anything is advertised as reusable.
 
-Expected Phase 1 modules should align with the conceptual interfaces in `docs/architecture.md`:
+Implementation modules should align with the conceptual interfaces in `docs/architecture.md`:
 
 - Ingest backend.
 - Burst detector.
 - Oscillation searcher.
 - Candidate scorer.
 - Catalog writer.
+- Injection/recovery runner.
 
 Current modules:
 
@@ -29,6 +30,7 @@ Current modules:
 - `burst_oscillation_accretion_mapper.oscillation_search`: targeted event-based `Z_n^2` search primitives, Leahy diagnostics, first-harmonic phase/amplitude estimates, optional NumPy acceleration, and sliding-window searches around known source frequencies for Phase 1 validation windows.
 - `burst_oscillation_accretion_mapper.phase1_recovery`: validation recovery status helpers that keep known-signal recovery and expected non-detection review separate from conservative catalog candidate classes.
 - `burst_oscillation_accretion_mapper.phase1_validation`: Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.
+- `burst_oscillation_accretion_mapper.injection_recovery_contract`: Phase 2 injection/recovery product contracts and tracked fixture loading for grid, trial, and burst-sensitivity products.
 - `burst_oscillation_accretion_mapper.raw_inventory`: local raw-product inventory and checksum helpers.
 - `burst_oscillation_accretion_mapper.rxte_archive`: HEASARC RXTE/PCA archive URL discovery and local mirroring helpers for selected Phase 1 products.
 - `burst_oscillation_accretion_mapper.rxte_binned`: RXTE/PCA SingleBit high-time binned product reader that expands counts to deterministic bin-center event-equivalent times for validation products lacking paired GoodXenon conversion inputs.
@@ -44,4 +46,4 @@ Current modules:
 - `burst_oscillation_accretion_mapper.timing_significance`: single-trial and nominal independent-trial corrected p-value helpers for Phase 1 `Z_n^2` products.
 - `burst_oscillation_accretion_mapper.time_intervals`: small GTI and event-window helpers for future event slicing.
 
-Do not add NICER backend code, injection/recovery code, inference models, or dashboard code before the roadmap phase is explicitly advanced.
+Do not add NICER backend code, inference models, or dashboard code before the roadmap phase is explicitly advanced. Phase 2 injection/recovery work should start with contracts, deterministic fixtures, and sensitivity products before broad simulation machinery.
