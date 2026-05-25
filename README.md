@@ -8,7 +8,9 @@ The project is intentionally framed around burst oscillations near neutron-star 
 
 Phase 0 is closed. The repository contains the architecture, roadmap, environment notes, source/reference manifests, RXTE/PCA validation targets, and manifest validation checks needed to ground the RXTE validation MVP.
 
-Phase 1 implementation scaffolding is in place for RXTE/PCA validation: event products, light curves, burst detection summaries, MINBAR timing matches, targeted oscillation search, conservative candidate scoring, controls, development catalog rows, and validation-run gates. Real RXTE FITS parsing and HEASoft execution remain an operational follow-up once local raw products and tool availability are confirmed.
+Phase 1 is strictly closed out for the selected RXTE/PCA validation set. The repository now includes RXTE event/FITS and SingleBit binned readers, real orbit-file barycentric correction through HEASoft `barycorr`, explicit GoodXenon pairing status, targeted `Z_1^2` search, conservative candidate scoring, pre/post and neighboring controls, synthetic Poisson null controls, SQLite/JSON validation output, and a strict validation gate.
+
+The Phase 1 closeout run recovered all five selected MINBAR burst windows, recovered the two strongest known-signal validation targets, kept the expected MINBAR.2206 non-detection as marginal review rather than an accepted detection, and produced no secure or probable controls across the expanded control set. Binary orbital correction remains gated on curated source ephemerides. Phase 2 should add injection/recovery sensitivity curves and amplitude upper limits before any population or accretion-state correlation claims.
 
 ## Key Documents
 
@@ -21,7 +23,7 @@ Phase 1 implementation scaffolding is in place for RXTE/PCA validation: event pr
 - [Source citation policy](docs/source-citation-policy.md): rules for dated mission, catalog, software, and literature claims.
 - [Manifest guide](data/manifests/README.md): CSV schema and curation workflow for Phase 0 manifests.
 
-## Phase 0 Validation Set
+## RXTE Validation Set
 
 The initial RXTE/PCA validation seed includes exact ObsIDs and MINBAR burst links for:
 
@@ -38,13 +40,14 @@ These rows live in [observations.csv](data/manifests/observations.csv) and [vali
 ```text
 docs/                 Architecture, roadmap, environment, and status docs.
 data/manifests/       Tracked CSV manifests and reference index.
+pipelines/            Reproducible local validation entrypoints.
 src/                  Phase 1 Python package modules.
 tests/                Manifest checks and lightweight unit tests.
 ```
 
 Generated science products, raw event files, and local catalogs stay outside git; tracked code and manifests preserve the reproducible shape of the validation run.
 
-## Validate Manifests
+## Run Checks
 
 Run the manifest check with:
 
@@ -59,6 +62,14 @@ Run the Python test suite with:
 ```powershell
 python -m pytest
 ```
+
+The Phase 1 real-data validation runner is:
+
+```powershell
+python pipelines\run_phase1_real_validation.py
+```
+
+That runner expects ignored local RXTE products under `data/raw/rxte/` and HEASoft availability for `barycorr`. It writes ignored SQLite and JSON products under `data/products/phase1_real_validation/`.
 
 ## Data Policy
 
