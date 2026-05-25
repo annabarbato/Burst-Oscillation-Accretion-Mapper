@@ -23,6 +23,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
+  "astropy>=7",
   "pytest>=8",
 ]
 science = [
