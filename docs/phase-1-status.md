@@ -55,6 +55,18 @@ Checked on 2026-05-24 with downloaded `XTE_SE` and SingleBit products, HEASoft `
 - The Phase 1 validation gate passed with `min_minbar_recall_fraction=1.0`, `max_secure_control_count=0`, and `max_probable_control_count=0`.
 - The strict closeout check passed. Every case carries `p_single`, `p_trials`, empirical control-FAP, correction status, and validation recovery status in `summary.json`.
 
+## Source Notes
+
+External sources used by this status note are tracked in `data/manifests/references.csv`:
+
+- RXTE/PCA archive and instrument assumptions: `rxte_pca_heasarc`.
+- HEASoft availability and mission-tool context: `heasoft_docs`.
+- MINBAR burst timing and ObsID mappings: `minbar_entry_2257`, `minbar_entry_2204`, `minbar_entry_2206`, `minbar_entry_2322`, and `minbar_entry_2431`.
+- Source coordinates and source classes: `simbad`.
+- Source-level burst-oscillation frequency seeds and published oscillation labels: `bo_4u_1636_536_581hz`, `bo_4u_1636_536_tail_osc_table`, `bo_4u_1728_34_363hz`, `bo_4u_1702_429_330hz`, and `bo_ks_1731_260_524hz`.
+
+Operational closeout claims are local pipeline outputs from `pipelines/run_phase1_real_validation.py`, specifically the ignored `data/products/phase1_real_validation/summary.json` and `phase1_real_validation.sqlite` artifacts generated on 2026-05-24.
+
 ## Explicitly Deferred
 
 - Binary orbital correction remains gated on curated source ephemerides. The workflow records `no_ephemeris` rather than applying an approximate correction.

@@ -12,6 +12,8 @@ Phase 1 is strictly closed out for the selected RXTE/PCA validation set. The rep
 
 The Phase 1 closeout run recovered all five selected MINBAR burst windows, recovered the two strongest known-signal validation targets, kept the expected MINBAR.2206 non-detection as marginal review rather than an accepted detection, and produced no secure or probable controls across the expanded control set. Binary orbital correction remains gated on curated source ephemerides. Phase 2 should add injection/recovery sensitivity curves and amplitude upper limits before any population or accretion-state correlation claims.
 
+Source-backed project claims are indexed in [references.csv](data/manifests/references.csv). Current or operational claims carry checked dates in the status docs; local validation results are produced by [run_phase1_real_validation.py](pipelines/run_phase1_real_validation.py) and summarized in the ignored `data/products/phase1_real_validation/summary.json` artifact.
+
 ## Key Documents
 
 - [Architecture](docs/architecture.md): technical architecture, scientific framing, pipeline modules, data products, storage model, candidate classes, and inference layer.
@@ -27,13 +29,22 @@ The Phase 1 closeout run recovered all five selected MINBAR burst windows, recov
 
 The initial RXTE/PCA validation seed includes exact ObsIDs and MINBAR burst links for:
 
-- 4U 1636-536, secure 581 Hz recovery target.
-- 4U 1728-34, secure 363 Hz recovery target.
-- 4U 1728-34, expected non-detection control.
-- 4U 1702-429, probable near-330 Hz recovery target for Phase 1 review.
-- KS 1731-260, probable near-524 Hz recovery target for Phase 1 review.
+- 4U 1636-536, secure 581 Hz recovery target: `minbar_entry_2257`, `bo_4u_1636_536_581hz`, and `bo_4u_1636_536_tail_osc_table`.
+- 4U 1728-34, secure 363 Hz recovery target: `minbar_entry_2204` and `bo_4u_1728_34_363hz`.
+- 4U 1728-34, expected non-detection control: `minbar_entry_2206` and `bo_4u_1728_34_363hz`.
+- 4U 1702-429, probable near-330 Hz recovery target for Phase 1 review: `minbar_entry_2322` and `bo_4u_1702_429_330hz`.
+- KS 1731-260, probable near-524 Hz recovery target for Phase 1 review: `minbar_entry_2431` and `bo_ks_1731_260_524hz`.
 
 These rows live in [observations.csv](data/manifests/observations.csv) and [validation_targets.csv](data/manifests/validation_targets.csv).
+
+## Citation Map
+
+- RXTE/PCA validation order, instrument capability, and archive context: `rxte_pca_heasarc`, `minbar_paper`, and `minbar_home`.
+- NICER/XTI status and future backend assumptions: `nicer_heasarc_status`, `nasa_nicer_status_updates`, `nicer_instrument_heasarc`, and `nicer_analysis_docs`.
+- Source coordinates, aliases, and source classes: `simbad`.
+- Source-level burst-oscillation frequency seeds and validation labels: the `bo_*` literature rows in [references.csv](data/manifests/references.csv).
+- MINBAR burst timing and ObsID mappings: the `minbar_entry_*` catalog rows in [references.csv](data/manifests/references.csv).
+- Timing and mission-tool software assumptions: `heasoft_docs`, `stingray_docs`, and `caldb_docs`.
 
 ## Repository Layout
 

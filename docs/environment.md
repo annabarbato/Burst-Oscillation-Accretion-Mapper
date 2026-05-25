@@ -81,3 +81,11 @@ Phase 0 is satisfied for environment strategy when:
 
 Phase 1 may add executable environment files when the first RXTE ingestion and validation code is introduced.
 
+## Reference Notes
+
+Mission-tool and calibration source claims in this document were checked on
+2026-05-24 against sources tracked in `data/manifests/references.csv`:
+
+- `heasoft_docs`: HEASoft mission-tool documentation.
+- `nicer_analysis_docs`: NICERDAS and NICER analysis documentation.
+- `caldb_docs`: HEASARC CALDB documentation.
