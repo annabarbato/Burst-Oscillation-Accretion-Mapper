@@ -1,8 +1,8 @@
-"""Validate Phase 0 CSV manifests.
+"""Validate tracked CSV manifests.
 
 This is intentionally a small standard-library check. It protects the source,
-observation, validation-target, and reference manifests before the project has a
-full Python package or test runner.
+observation, validation-target, and reference manifests independently of the
+Phase 1 Python package.
 """
 
 from __future__ import annotations
@@ -131,7 +131,20 @@ def read_csv(path: Path, expected_columns: list[str]) -> list[dict[str, str]]:
                 f"  expected: {expected_columns}\n"
                 f"  found:    {reader.fieldnames}"
             )
-        return list(reader)
+        rows = list(reader)
+        for line_number, row in enumerate(rows, start=2):
+            if None in row:
+                raise ManifestError(
+                    f"{path.name} row {line_number} has too many columns"
+                )
+
+            missing = [field for field, value in row.items() if value is None]
+            if missing:
+                raise ManifestError(
+                    f"{path.name} row {line_number} has too few columns: {missing}"
+                )
+
+        return rows
 
 
 def require(row: dict[str, str], field: str, row_name: str) -> str:
