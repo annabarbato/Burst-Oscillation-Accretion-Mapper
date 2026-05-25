@@ -81,6 +81,7 @@ class Phase1ValidationGatePolicy:
     require_control_rows: bool = True
     require_timing_metrics: bool = True
     max_secure_control_count: int = 0
+    max_probable_control_count: int | None = None
     max_control_false_alarm_fraction: float | None = None
     min_minbar_recall_fraction: float | None = None
 
@@ -89,6 +90,11 @@ class Phase1ValidationGatePolicy:
             self.max_secure_control_count,
             "max_secure_control_count",
         )
+        if self.max_probable_control_count is not None:
+            _require_non_negative_int(
+                self.max_probable_control_count,
+                "max_probable_control_count",
+            )
         if self.max_control_false_alarm_fraction is not None:
             _require_probability(
                 self.max_control_false_alarm_fraction,
@@ -163,6 +169,11 @@ def review_phase1_validation_gate(
         reasons.append("no_minbar_timing_metrics")
     if summary.control_secure_count > policy.max_secure_control_count:
         reasons.append("secure_control_count_exceeds_policy")
+    if (
+        policy.max_probable_control_count is not None
+        and summary.control_probable_count > policy.max_probable_control_count
+    ):
+        reasons.append("probable_control_count_exceeds_policy")
     if (
         policy.max_control_false_alarm_fraction is not None
         and summary.control_false_alarm_fraction is not None

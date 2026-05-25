@@ -20,9 +20,9 @@ def test_loads_rxte_validation_contexts() -> None:
     assert {context.observation.instrument for context in contexts} == {"RXTE/PCA"}
     assert {context.target.obs_id for context in contexts} == {
         "10088-01-07-02",
-        "10073-01-01-00",
-        "10073-01-02-00",
-        "20084-02-01-00",
+        "10073-01-01-000",
+        "10073-01-02-000",
+        "20084-02-01-000",
         "30061-01-02-01",
     }
 
@@ -52,7 +52,7 @@ def test_non_detection_control_is_available_without_frequency() -> None:
     assert control.target.target_id == "rxte_4u_1728_34_non_detection_2206"
     assert control.target.expected_frequency_hz is None
     assert control.source.source_id == "4u_1728_34"
-    assert control.observation.obs_id == "10073-01-02-00"
+    assert control.observation.obs_id == "10073-01-02-000"
 
 
 def test_missing_manifest_directory_raises_clear_error(tmp_path: Path) -> None:

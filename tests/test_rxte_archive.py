@@ -1,4 +1,5 @@
 from burst_oscillation_accretion_mapper.rxte_archive import (
+    PHASE1_RXTE_SUBDIRECTORIES,
     RxteArchiveError,
     rxte_observation_archive_url,
 )
@@ -22,3 +23,7 @@ def test_rxte_observation_archive_url_rejects_invalid_obsid() -> None:
         assert "Invalid RXTE ObsID" in str(exc)
     else:
         raise AssertionError("Expected invalid ObsID to raise")
+
+
+def test_phase1_archive_subdirectories_include_orbit_products() -> None:
+    assert "orbit" in PHASE1_RXTE_SUBDIRECTORIES

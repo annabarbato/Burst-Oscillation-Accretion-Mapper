@@ -143,6 +143,23 @@ def test_review_phase1_validation_gate_flags_control_and_recall_failures() -> No
     )
 
 
+def test_review_phase1_validation_gate_can_reject_probable_controls() -> None:
+    summary = summarize_phase1_validation_catalog(
+        burst_rows=(_burst_row(),),
+        candidate_rows=(_candidate_row("candidate-001", NON_DETECTION),),
+        control_rows=(_control_row("control-001", PROBABLE_DETECTION),),
+        timing_metrics=_timing_metrics(),
+    )
+
+    review = review_phase1_validation_gate(
+        summary,
+        policy=Phase1ValidationGatePolicy(max_probable_control_count=0),
+    )
+
+    assert not review.passed
+    assert review.reasons == ("probable_control_count_exceeds_policy",)
+
+
 def test_phase1_validation_policy_validates_probability_thresholds() -> None:
     with pytest.raises(Phase1ValidationError, match="max_control_false_alarm_fraction"):
         Phase1ValidationGatePolicy(max_control_false_alarm_fraction=1.1)

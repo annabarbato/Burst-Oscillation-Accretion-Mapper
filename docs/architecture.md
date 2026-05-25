@@ -86,6 +86,8 @@ RXTE/PCA is the validation backend and should be implemented first.
 Inputs:
 
 - RXTE event-mode or GoodXenon files.
+- RXTE/PCA high-time binned Science Array products, when selected validation
+  bursts lack paired GoodXenon inputs that can be converted to event files.
 - Standard HEASARC products and mission metadata.
 - MINBAR burst and observation tables for validation.
 - Source ephemerides and literature spin/burst-oscillation frequencies.
@@ -94,10 +96,21 @@ Processing:
 
 - Download or link HEASARC ObsIDs for known bursters.
 - Extract event lists from high-time-resolution modes when available.
+- For high-time binned validation products, expand count bins to
+  event-equivalent bin-center times and mark the product provenance as binned.
 - Apply GTIs, detector/PCU selection, deadtime-aware count-rate metadata, and energy/channel filters.
-- Apply Solar System barycentric corrections.
-- Apply binary orbital corrections where reliable ephemerides exist.
+- Apply Solar System barycentric corrections with real spacecraft orbit files;
+  never use a `GEOCENTER` fallback for burst-oscillation timing validation.
+- Apply binary orbital corrections only where reliable ephemerides exist; otherwise
+  report an explicit no-ephemeris status.
 - Generate event tables, diagnostic light curves, background products, and spectral products where feasible.
+
+Phase 1 validation product selection must stay explicit:
+
+- Prefer barycentered `XTE_SE` event tables.
+- Fall back to raw `XTE_SE` event tables and then run barycentric correction.
+- Use successful `make_se` outputs only when paired GoodXenon inputs exist.
+- Use SingleBit binned products only as a documented Phase 1 validation fallback.
 
 Default RXTE energy bands for burst detection and timing:
 
@@ -635,4 +648,3 @@ Claims in this document were checked on 2026-05-24 against these sources:
 - MINBAR home: https://burst.sci.monash.edu/wiki/index.php?n=MINBAR.Home
 - RXTE/PCA specs: https://heasarc.gsfc.nasa.gov/docs/xte/PCA.html
 - Stingray documentation: https://docs.stingray.science/en/stable/
-

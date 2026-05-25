@@ -16,10 +16,14 @@ Expected early test areas:
 - HEASARC RXTE/PCA archive URL discovery and local mirroring helper behavior.
 - RXTE/PCA detector-selection and barycenter provenance configuration.
 - RXTE/PCA ingestion preflight behavior before event-table ingestion.
+- RXTE/PCA product-selection ranking, real-orbit `barycorr` command construction, and `GEOCENTER` refusal.
+- GoodXenon pairing checks that record `unpaired_goodxenon` instead of silently claiming conversion.
 - Astropy-based local RXTE FITS event-table reading on tiny synthetic FITS fixtures.
+- RXTE/PCA SingleBit high-time binned product expansion on tiny synthetic FITS fixtures.
 - RXTE TT mission-time conversion for MINBAR UTC MJD validation windows.
 - Manifest parsing and validation.
 - MINBAR timing-window matching, observation-level reports, and validation metrics against detector summary products.
+- Phase 1 validation recovery statuses for probable known detections, expected non-detection review cases, p-values, and control-FAP fields.
 - Phase 1 validation-run summaries and gate checks across burst, candidate, control, and MINBAR timing products.
 - Phase 1 manifest access for selected RXTE/PCA validation ObsIDs.
 - Targeted event-based `Z_n^2` oscillation-search, Leahy diagnostics, first-harmonic phase/amplitude estimates, and sliding-window primitives on synthetic events.
@@ -50,4 +54,4 @@ Run the Python test suite with:
 python -m pytest
 ```
 
-The initial Phase 1 test suite is intentionally small and verifies that the package skeleton imports cleanly before RXTE-specific implementation begins.
+The Phase 1 suite now covers the local RXTE validation skeleton and strict closeout guardrails. Large external mission products remain ignored; the real-data runner documents those outputs under `data/products/phase1_real_validation/`.

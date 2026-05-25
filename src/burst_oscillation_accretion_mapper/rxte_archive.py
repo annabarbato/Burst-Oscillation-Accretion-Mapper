@@ -17,7 +17,7 @@ from .raw_inventory import RawInventory, inventory_raw_files
 
 
 HEASARC_RXTE_ARCHIVE_BASE_URL = "https://heasarc.gsfc.nasa.gov/FTP/xte/data/archive"
-PHASE1_RXTE_SUBDIRECTORIES = ("pca", "stdprod")
+PHASE1_RXTE_SUBDIRECTORIES = ("pca", "stdprod", "orbit")
 STDPATH_KEEP_PREFIXES = ("x",)
 STDPATH_KEEP_SUFFIXES = (".gti.gz", ".xfl.gz")
 
@@ -71,7 +71,7 @@ def discover_phase1_rxte_products(
     for subdirectory in PHASE1_RXTE_SUBDIRECTORIES:
         directory_url = urljoin(observation_url, f"{subdirectory}/")
         for filename in _list_archive_filenames(directory_url):
-            if subdirectory == "stdprod" and not _keep_stdprod_file(filename):
+            if not _keep_phase1_file(subdirectory, filename):
                 continue
             file_url = urljoin(directory_url, filename)
             products.append(
@@ -168,6 +168,18 @@ def _keep_stdprod_file(filename: str) -> bool:
     return filename.startswith(STDPATH_KEEP_PREFIXES) and filename.endswith(
         STDPATH_KEEP_SUFFIXES
     )
+
+
+def _keep_orbit_file(filename: str) -> bool:
+    return filename.startswith("FPorbit")
+
+
+def _keep_phase1_file(subdirectory: str, filename: str) -> bool:
+    if subdirectory == "stdprod":
+        return _keep_stdprod_file(filename)
+    if subdirectory == "orbit":
+        return _keep_orbit_file(filename)
+    return True
 
 
 class _ArchiveLinkParser(HTMLParser):
